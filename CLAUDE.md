@@ -136,8 +136,10 @@ Each sub-workflow is called via `executeWorkflow` with `waitForSubWorkflow: true
 
 | Resource | Value |
 |---|---|
-| S3 bucket | `reels-voiceovers` (Cloudflare R2) |
-| CDN base URL | `https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/` |
+| S3 bucket (crypto) | `reels-voiceovers` (Cloudflare R2) |
+| CDN base URL (crypto) | `https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/` |
+| S3 bucket (cooking) | `cooking-reels` (Cloudflare R2) |
+| CDN base URL (cooking) | `https://pub-37b9b6ddb72f4f18afbe8af4657ccaf4.r2.dev/` |
 | Telegram Chat ID | `-1003735970138` |
 | ElevenLabs Voice ID | `TUKJhQmz3RPYBNAgC5A1` (German voice, set in `Voice ID` Set node) |
 | ElevenLabs model | `eleven_multilingual_v2`, stability `0.6`, similarity `0.8` |

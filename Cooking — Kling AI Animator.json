@@ -1,671 +1,649 @@
 {
-    "updatedAt": "2026-06-28T15:29:54.136Z",
-    "createdAt": "2026-06-28T15:29:54.136Z",
-    "id": "yndJdfRoRIJbvTLC",
-    "name": "Cooking \u2014 Kling AI Animator",
-    "description": null,
-    "active": false,
-    "isArchived": false,
-    "nodes": [
-        {
-            "parameters": {
-                "inputSource": "passthrough"
-            },
-            "type": "n8n-nodes-base.executeWorkflowTrigger",
-            "typeVersion": 1.1,
-            "position": [
-                0,
-                0
-            ],
-            "id": "b4000001-0000-0000-0000-000000000001",
-            "name": "When Executed by Another Workflow"
-        },
-        {
-            "parameters": {
-                "options": {
-                    "reset": false
-                }
-            },
-            "type": "n8n-nodes-base.splitInBatches",
-            "typeVersion": 3,
-            "position": [
-                280,
-                0
-            ],
-            "id": "b4000002-0000-0000-0000-000000000002",
-            "name": "Loop Clips"
-        },
-        {
-            "parameters": {
-                "jsCode": "const duration = Number($json.duration ?? 5);\nconst klingDuration = duration <= 6 ? \"5\" : \"10\";\nconst videoKey = `cooking/${$json.scriptId}/video/clip_${String($json.clipIndex).padStart(2,'0')}_${($json.act ?? 'clip').replace(/[^a-z0-9_]+/gi,'_').toLowerCase()}.mp4`;\n\nreturn [{ json: { ...$json, klingDuration, videoKey } }];"
-            },
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                560,
-                0
-            ],
-            "id": "b4000003-0000-0000-0000-000000000003",
-            "name": "Prepare Kling Input"
-        },
-        {
-            "parameters": {
-                "method": "POST",
-                "url": "https://api.klingai.com/v1/videos/image2video",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Authorization",
-                            "value": "Bearer KLING_API_KEY_PLACEHOLDER"
-                        },
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ]
-                },
-                "sendBody": true,
-                "specifyBody": "string",
-                "body": "={\n  \"model_name\": \"kling-v1-6\",\n  \"image\": \"{{ $json.image_url }}\",\n  \"prompt\": \"{{ $json.kling_prompt }}\",\n  \"negative_prompt\": \"low quality, blurry, watermark, logo, text, cartoon, anime, CGI, plastic skin, deformed hands, extra fingers, duplicate ingredients, floating objects, morphing, artifacts, camera glitches, oversaturated, unnatural lighting\",\n  \"duration\": \"{{ $json.klingDuration }}\",\n  \"aspect_ratio\": \"9:16\",\n  \"cfg_scale\": 0.5\n}",
-                "options": {
-                    "retryOnFail": {
-                        "values": {
-                            "enabled": true,
-                            "maxTries": 3,
-                            "waitBetweenTries": 2000
-                        }
-                    }
-                }
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.3,
-            "position": [
-                840,
-                0
-            ],
-            "id": "b4000004-0000-0000-0000-000000000004",
-            "name": "Kling \u2014 Create Task"
-        },
-        {
-            "parameters": {
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "f1",
-                            "name": "klingTaskId",
-                            "value": "={{ $json.data.task_id }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f2",
-                            "name": "scriptId",
-                            "value": "={{ $('Prepare Kling Input').item.json.scriptId }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f3",
-                            "name": "clipIndex",
-                            "value": "={{ $('Prepare Kling Input').item.json.clipIndex }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "f4",
-                            "name": "act",
-                            "value": "={{ $('Prepare Kling Input').item.json.act }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f5",
-                            "name": "audio_url",
-                            "value": "={{ $('Prepare Kling Input').item.json.audio_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f6",
-                            "name": "image_url",
-                            "value": "={{ $('Prepare Kling Input').item.json.image_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f7",
-                            "name": "voiceover_text",
-                            "value": "={{ $('Prepare Kling Input').item.json.voiceover_text }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f8",
-                            "name": "kling_prompt",
-                            "value": "={{ $('Prepare Kling Input').item.json.kling_prompt }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "f9",
-                            "name": "duration",
-                            "value": "={{ $('Prepare Kling Input').item.json.duration }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "f10",
-                            "name": "videoKey",
-                            "value": "={{ $('Prepare Kling Input').item.json.videoKey }}",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.set",
-            "typeVersion": 3.4,
-            "position": [
-                1120,
-                0
-            ],
-            "id": "b4000005-0000-0000-0000-000000000005",
-            "name": "Save Task ID"
-        },
-        {
-            "parameters": {
-                "amount": 45,
-                "unit": "seconds"
-            },
-            "type": "n8n-nodes-base.wait",
-            "typeVersion": 1.1,
-            "position": [
-                1400,
-                0
-            ],
-            "id": "b4000006-0000-0000-0000-000000000006",
-            "name": "Wait 45s",
-            "webhookId": "b4000006-webhook"
-        },
-        {
-            "parameters": {
-                "method": "GET",
-                "url": "=https://api.klingai.com/v1/videos/image2video/{{ $('Save Task ID').item.json.klingTaskId }}",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Authorization",
-                            "value": "Bearer KLING_API_KEY_PLACEHOLDER"
-                        }
-                    ]
-                },
-                "options": {
-                    "retryOnFail": {
-                        "values": {
-                            "enabled": true,
-                            "maxTries": 3,
-                            "waitBetweenTries": 2000
-                        }
-                    }
-                }
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.3,
-            "position": [
-                1680,
-                0
-            ],
-            "id": "b4000007-0000-0000-0000-000000000007",
-            "name": "Kling \u2014 Poll Status"
-        },
-        {
-            "parameters": {
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "g1",
-                            "name": "klingStatus",
-                            "value": "={{ $json.data.task_status }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g2",
-                            "name": "klingVideoUrl",
-                            "value": "={{ $json.data.task_result?.videos?.[0]?.url ?? '' }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g3",
-                            "name": "klingTaskId",
-                            "value": "={{ $('Save Task ID').item.json.klingTaskId }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g4",
-                            "name": "scriptId",
-                            "value": "={{ $('Save Task ID').item.json.scriptId }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g5",
-                            "name": "clipIndex",
-                            "value": "={{ $('Save Task ID').item.json.clipIndex }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "g6",
-                            "name": "act",
-                            "value": "={{ $('Save Task ID').item.json.act }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g7",
-                            "name": "audio_url",
-                            "value": "={{ $('Save Task ID').item.json.audio_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g8",
-                            "name": "image_url",
-                            "value": "={{ $('Save Task ID').item.json.image_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g9",
-                            "name": "voiceover_text",
-                            "value": "={{ $('Save Task ID').item.json.voiceover_text }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g10",
-                            "name": "kling_prompt",
-                            "value": "={{ $('Save Task ID').item.json.kling_prompt }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "g11",
-                            "name": "duration",
-                            "value": "={{ $('Save Task ID').item.json.duration }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "g12",
-                            "name": "videoKey",
-                            "value": "={{ $('Save Task ID').item.json.videoKey }}",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.set",
-            "typeVersion": 3.4,
-            "position": [
-                1960,
-                0
-            ],
-            "id": "b4000008-0000-0000-0000-000000000008",
-            "name": "Extract Status"
-        },
-        {
-            "parameters": {
-                "conditions": {
-                    "options": {
-                        "caseSensitive": true,
-                        "leftValue": "",
-                        "typeValidation": "strict"
-                    },
-                    "conditions": [
-                        {
-                            "id": "c1",
-                            "leftValue": "={{ $json.klingStatus }}",
-                            "rightValue": "succeed",
-                            "operator": {
-                                "type": "string",
-                                "operation": "equals"
-                            }
-                        }
-                    ],
-                    "combinator": "and"
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.if",
-            "typeVersion": 2.2,
-            "position": [
-                2240,
-                0
-            ],
-            "id": "b4000009-0000-0000-0000-000000000009",
-            "name": "Done?"
-        },
-        {
-            "parameters": {
-                "amount": 15,
-                "unit": "seconds"
-            },
-            "type": "n8n-nodes-base.wait",
-            "typeVersion": 1.1,
-            "position": [
-                2240,
-                200
-            ],
-            "id": "b4000010-0000-0000-0000-000000000010",
-            "name": "Wait 15s",
-            "webhookId": "b4000010-webhook"
-        },
-        {
-            "parameters": {
-                "url": "={{ $json.klingVideoUrl }}",
-                "options": {
-                    "response": {
-                        "response": {
-                            "responseFormat": "file"
-                        }
-                    }
-                }
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.3,
-            "position": [
-                2520,
-                0
-            ],
-            "id": "b4000011-0000-0000-0000-000000000011",
-            "name": "Download Video"
-        },
-        {
-            "parameters": {
-                "operation": "upload",
-                "bucketName": "reels-voiceovers",
-                "fileName": "={{ $('Extract Status').item.json.videoKey }}",
-                "binaryPropertyName": "data",
-                "options": {}
-            },
-            "type": "n8n-nodes-base.s3",
-            "typeVersion": 2.1,
-            "position": [
-                2800,
-                0
-            ],
-            "id": "b4000012-0000-0000-0000-000000000012",
-            "name": "Upload Video to S3",
-            "credentials": {
-                "s3": {
-                    "id": "ARZEQMSLdWqjXadc",
-                    "name": "S3 account 2"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "h1",
-                            "name": "clipIndex",
-                            "value": "={{ $('Extract Status').item.json.clipIndex }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "h2",
-                            "name": "scriptId",
-                            "value": "={{ $('Extract Status').item.json.scriptId }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h3",
-                            "name": "audio_url",
-                            "value": "={{ $('Extract Status').item.json.audio_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h4",
-                            "name": "image_url",
-                            "value": "={{ $('Extract Status').item.json.image_url }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h5",
-                            "name": "video_url",
-                            "value": "=https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/{{ $('Extract Status').item.json.videoKey }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h6",
-                            "name": "voiceover_text",
-                            "value": "={{ $('Extract Status').item.json.voiceover_text }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h7",
-                            "name": "kling_prompt",
-                            "value": "={{ $('Extract Status').item.json.kling_prompt }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "h8",
-                            "name": "duration",
-                            "value": "={{ $('Extract Status').item.json.duration }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "h9",
-                            "name": "act",
-                            "value": "={{ $('Extract Status').item.json.act }}",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.set",
-            "typeVersion": 3.4,
-            "position": [
-                3080,
-                0
-            ],
-            "id": "b4000013-0000-0000-0000-000000000013",
-            "name": "Build Video Output"
-        },
-        {
-            "parameters": {
-                "jsCode": "const items = $input.all().map(i => i.json).sort((a,b) => a.clipIndex - b.clipIndex);\nreturn items.map(item => ({ json: item }));"
-            },
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                3640,
-                0
-            ],
-            "id": "b4000014-0000-0000-0000-000000000014",
-            "name": "Collect All Clips"
-        }
-    ],
-    "connections": {
-        "When Executed by Another Workflow": {
-            "main": [
-                [
-                    {
-                        "node": "Loop Clips",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Loop Clips": {
-            "main": [
-                [
-                    {
-                        "node": "Collect All Clips",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Prepare Kling Input",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Prepare Kling Input": {
-            "main": [
-                [
-                    {
-                        "node": "Kling \u2014 Create Task",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Kling \u2014 Create Task": {
-            "main": [
-                [
-                    {
-                        "node": "Save Task ID",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Save Task ID": {
-            "main": [
-                [
-                    {
-                        "node": "Wait 45s",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Wait 45s": {
-            "main": [
-                [
-                    {
-                        "node": "Kling \u2014 Poll Status",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Kling \u2014 Poll Status": {
-            "main": [
-                [
-                    {
-                        "node": "Extract Status",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Extract Status": {
-            "main": [
-                [
-                    {
-                        "node": "Done?",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Done?": {
-            "main": [
-                [
-                    {
-                        "node": "Download Video",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Wait 15s",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Wait 15s": {
-            "main": [
-                [
-                    {
-                        "node": "Kling \u2014 Poll Status",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Download Video": {
-            "main": [
-                [
-                    {
-                        "node": "Upload Video to S3",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Upload Video to S3": {
-            "main": [
-                [
-                    {
-                        "node": "Build Video Output",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Build Video Output": {
-            "main": [
-                [
-                    {
-                        "node": "Loop Clips",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+  "updatedAt": "2026-06-28T15:42:18.147Z",
+  "createdAt": "2026-06-28T15:29:54.136Z",
+  "id": "yndJdfRoRIJbvTLC",
+  "name": "Cooking \u2014 Kling AI Animator",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b4000001-0000-0000-0000-000000000001",
+      "name": "When Executed by Another Workflow"
     },
-    "settings": {
-        "executionOrder": "v1"
-    },
-    "staticData": null,
-    "meta": null,
-    "nodeGroups": [],
-    "pinData": {},
-    "versionId": "99bf3469-a725-4ce8-bc8d-98f480fe15ed",
-    "activeVersionId": null,
-    "versionCounter": 1,
-    "triggerCount": 0,
-    "sourceWorkflowId": null,
-    "shared": [
-        {
-            "updatedAt": "2026-06-28T15:29:54.138Z",
-            "createdAt": "2026-06-28T15:29:54.138Z",
-            "role": "workflow:owner",
-            "workflowId": "yndJdfRoRIJbvTLC",
-            "projectId": "qK5OY1dAlcpuaDcJ",
-            "project": {
-                "updatedAt": "2025-08-24T15:22:22.446Z",
-                "createdAt": "2025-08-24T15:22:19.788Z",
-                "id": "qK5OY1dAlcpuaDcJ",
-                "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
-                "type": "personal",
-                "icon": null,
-                "description": null,
-                "customTelemetryTags": [],
-                "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
-            }
+    {
+      "parameters": {
+        "options": {
+          "reset": false
         }
-    ],
-    "tags": [],
-    "activeVersion": null
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        288,
+        0
+      ],
+      "id": "b4000002-0000-0000-0000-000000000002",
+      "name": "Loop Clips"
+    },
+    {
+      "parameters": {
+        "jsCode": "const duration = Number($json.duration ?? 5);\nconst klingDuration = duration <= 6 ? \"5\" : \"10\";\nconst videoKey = `cooking/${$json.scriptId}/video/clip_${String($json.clipIndex).padStart(2,'0')}_${($json.act ?? 'clip').replace(/[^a-z0-9_]+/gi,'_').toLowerCase()}.mp4`;\n\nreturn [{ json: { ...$json, klingDuration, videoKey } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "b4000003-0000-0000-0000-000000000003",
+      "name": "Prepare Kling Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.klingai.com/v1/videos/image2video",
+        "authentication": "predefinedCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer api-key-kling-PL9pL237_3CeX_w-UIzokGhBW6YKPVhdjM5bz6Zt9nQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={\n  \"model_name\": \"kling-v1-6\",\n  \"image\": \"{{ $json.image_url }}\",\n  \"prompt\": \"{{ $json.kling_prompt }}\",\n  \"negative_prompt\": \"low quality, blurry, watermark, logo, text, cartoon, anime, CGI, plastic skin, deformed hands, extra fingers, duplicate ingredients, floating objects, morphing, artifacts, camera glitches, oversaturated, unnatural lighting\",\n  \"duration\": \"{{ $json.klingDuration }}\",\n  \"aspect_ratio\": \"9:16\",\n  \"cfg_scale\": 0.5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        848,
+        0
+      ],
+      "id": "b4000004-0000-0000-0000-000000000004",
+      "name": "Kling \u2014 Create Task"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "klingTaskId",
+              "value": "={{ $json.data.task_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "scriptId",
+              "value": "={{ $('Prepare Kling Input').item.json.scriptId }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "clipIndex",
+              "value": "={{ $('Prepare Kling Input').item.json.clipIndex }}",
+              "type": "number"
+            },
+            {
+              "id": "f4",
+              "name": "act",
+              "value": "={{ $('Prepare Kling Input').item.json.act }}",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "audio_url",
+              "value": "={{ $('Prepare Kling Input').item.json.audio_url }}",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "image_url",
+              "value": "={{ $('Prepare Kling Input').item.json.image_url }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "voiceover_text",
+              "value": "={{ $('Prepare Kling Input').item.json.voiceover_text }}",
+              "type": "string"
+            },
+            {
+              "id": "f8",
+              "name": "kling_prompt",
+              "value": "={{ $('Prepare Kling Input').item.json.kling_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "f9",
+              "name": "duration",
+              "value": "={{ $('Prepare Kling Input').item.json.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "f10",
+              "name": "videoKey",
+              "value": "={{ $('Prepare Kling Input').item.json.videoKey }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "b4000005-0000-0000-0000-000000000005",
+      "name": "Save Task ID"
+    },
+    {
+      "parameters": {
+        "amount": 45
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1408,
+        0
+      ],
+      "id": "b4000006-0000-0000-0000-000000000006",
+      "name": "Wait 45s",
+      "webhookId": "b4000006-webhook"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.klingai.com/v1/videos/image2video/{{ $('Save Task ID').item.json.klingTaskId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer api-key-kling-PL9pL237_3CeX_w-UIzokGhBW6YKPVhdjM5bz6Zt9nQ"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1680,
+        0
+      ],
+      "id": "b4000007-0000-0000-0000-000000000007",
+      "name": "Kling \u2014 Poll Status"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "g1",
+              "name": "klingStatus",
+              "value": "={{ $json.data.task_status }}",
+              "type": "string"
+            },
+            {
+              "id": "g2",
+              "name": "klingVideoUrl",
+              "value": "={{ $json.data.task_result?.videos?.[0]?.url ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "g3",
+              "name": "klingTaskId",
+              "value": "={{ $('Save Task ID').item.json.klingTaskId }}",
+              "type": "string"
+            },
+            {
+              "id": "g4",
+              "name": "scriptId",
+              "value": "={{ $('Save Task ID').item.json.scriptId }}",
+              "type": "string"
+            },
+            {
+              "id": "g5",
+              "name": "clipIndex",
+              "value": "={{ $('Save Task ID').item.json.clipIndex }}",
+              "type": "number"
+            },
+            {
+              "id": "g6",
+              "name": "act",
+              "value": "={{ $('Save Task ID').item.json.act }}",
+              "type": "string"
+            },
+            {
+              "id": "g7",
+              "name": "audio_url",
+              "value": "={{ $('Save Task ID').item.json.audio_url }}",
+              "type": "string"
+            },
+            {
+              "id": "g8",
+              "name": "image_url",
+              "value": "={{ $('Save Task ID').item.json.image_url }}",
+              "type": "string"
+            },
+            {
+              "id": "g9",
+              "name": "voiceover_text",
+              "value": "={{ $('Save Task ID').item.json.voiceover_text }}",
+              "type": "string"
+            },
+            {
+              "id": "g10",
+              "name": "kling_prompt",
+              "value": "={{ $('Save Task ID').item.json.kling_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "g11",
+              "name": "duration",
+              "value": "={{ $('Save Task ID').item.json.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "g12",
+              "name": "videoKey",
+              "value": "={{ $('Save Task ID').item.json.videoKey }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1968,
+        0
+      ],
+      "id": "b4000008-0000-0000-0000-000000000008",
+      "name": "Extract Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.klingStatus }}",
+              "rightValue": "succeed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "b4000009-0000-0000-0000-000000000009",
+      "name": "Done?"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        208
+      ],
+      "id": "b4000010-0000-0000-0000-000000000010",
+      "name": "Wait 15s",
+      "webhookId": "b4000010-webhook"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.klingVideoUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2528,
+        0
+      ],
+      "id": "b4000011-0000-0000-0000-000000000011",
+      "name": "Download Video"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 2.1,
+      "position": [
+        2800,
+        0
+      ],
+      "id": "b4000012-0000-0000-0000-000000000012",
+      "name": "Upload Video to S3",
+      "credentials": {
+        "s3": {
+          "id": "ARZEQMSLdWqjXadc",
+          "name": "S3 account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "h1",
+              "name": "clipIndex",
+              "value": "={{ $('Extract Status').item.json.clipIndex }}",
+              "type": "number"
+            },
+            {
+              "id": "h2",
+              "name": "scriptId",
+              "value": "={{ $('Extract Status').item.json.scriptId }}",
+              "type": "string"
+            },
+            {
+              "id": "h3",
+              "name": "audio_url",
+              "value": "={{ $('Extract Status').item.json.audio_url }}",
+              "type": "string"
+            },
+            {
+              "id": "h4",
+              "name": "image_url",
+              "value": "={{ $('Extract Status').item.json.image_url }}",
+              "type": "string"
+            },
+            {
+              "id": "h5",
+              "name": "video_url",
+              "value": "=https://pub-37b9b6ddb72f4f18afbe8af4657ccaf4.r2.dev/{{ $('Extract Status').item.json.videoKey }}",
+              "type": "string"
+            },
+            {
+              "id": "h6",
+              "name": "voiceover_text",
+              "value": "={{ $('Extract Status').item.json.voiceover_text }}",
+              "type": "string"
+            },
+            {
+              "id": "h7",
+              "name": "kling_prompt",
+              "value": "={{ $('Extract Status').item.json.kling_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "h8",
+              "name": "duration",
+              "value": "={{ $('Extract Status').item.json.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "h9",
+              "name": "act",
+              "value": "={{ $('Extract Status').item.json.act }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3088,
+        0
+      ],
+      "id": "b4000013-0000-0000-0000-000000000013",
+      "name": "Build Video Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json).sort((a,b) => a.clipIndex - b.clipIndex);\nreturn items.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3648,
+        0
+      ],
+      "id": "b4000014-0000-0000-0000-000000000014",
+      "name": "Collect All Clips"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Clips": {
+      "main": [
+        [
+          {
+            "node": "Collect All Clips",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Kling Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Kling Input": {
+      "main": [
+        [
+          {
+            "node": "Kling \u2014 Create Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling \u2014 Create Task": {
+      "main": [
+        [
+          {
+            "node": "Save Task ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Task ID": {
+      "main": [
+        [
+          {
+            "node": "Wait 45s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 45s": {
+      "main": [
+        [
+          {
+            "node": "Kling \u2014 Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kling \u2014 Poll Status": {
+      "main": [
+        [
+          {
+            "node": "Extract Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Status": {
+      "main": [
+        [
+          {
+            "node": "Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done?": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s": {
+      "main": [
+        [
+          {
+            "node": "Kling \u2014 Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video to S3": {
+      "main": [
+        [
+          {
+            "node": "Build Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Video Output": {
+      "main": [
+        [
+          {
+            "node": "Loop Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "29b9e8cf-5a1f-4be4-897d-bab9af57173f",
+  "activeVersionId": null,
+  "versionCounter": 5,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-28T15:29:54.138Z",
+      "createdAt": "2026-06-28T15:29:54.138Z",
+      "role": "workflow:owner",
+      "workflowId": "yndJdfRoRIJbvTLC",
+      "projectId": "qK5OY1dAlcpuaDcJ",
+      "project": {
+        "updatedAt": "2025-08-24T15:22:22.446Z",
+        "createdAt": "2025-08-24T15:22:19.788Z",
+        "id": "qK5OY1dAlcpuaDcJ",
+        "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
 }
