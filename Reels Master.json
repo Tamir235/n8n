@@ -1,0 +1,313 @@
+{
+  "name": "Reels Master",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "pT5wAtJd57wCEBhv",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/pT5wAtJd57wCEBhv",
+          "cachedResultName": "News — News_Intake_24h_Crypto_ONLY"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        976,
+        48
+      ],
+      "id": "4f27d127-8b81-4322-8da2-b27823509de9",
+      "name": "Call 'News_Intake_24h_Crypto_ONLY'",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1nuI2fuS22Cq5w81",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1nuI2fuS22Cq5w81",
+          "cachedResultName": "News — Voice and Image Generator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1248,
+        48
+      ],
+      "id": "37482402-1a13-4129-a299-d5c7920ca45e",
+      "name": "Call 'Voice and Image Generator'",
+      "alwaysOutputData": false,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\n// Zeit in Europe/Berlin holen (inkl. Sommer-/Winterzeit)\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Europe/Berlin',\n  year: 'numeric',\n  month: '2-digit',\n  day: '2-digit',\n  hour: '2-digit',\n  minute: '2-digit',\n  second: '2-digit',\n  hour12: false\n}).formatToParts(now);\n\n// Teile zusammensetzen\nconst dateParts = Object.fromEntries(parts.map(p => [p.type, p.value]));\n\n// Millisekunden aus original Date holen\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\n\n// Format bauen: YYYY-MM-DDTHH-MM-SS-SSSZ\nconst formatted = `${dateParts.year}-${dateParts.month}-${dateParts.day}T${dateParts.hour}-${dateParts.minute}-${dateParts.second}-${ms}Z`;\n\nreturn [{\n  json: {\n    scriptId: `reel_${formatted}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        48
+      ],
+      "id": "01ce9c5c-b2be-403b-8d68-e108e144f006",
+      "name": "Generate scriptId"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "VeXgfkihC7JYQr26",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/VeXgfkihC7JYQr26",
+          "cachedResultName": "News — Video rendering"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1520,
+        48
+      ],
+      "id": "fb23799b-9d0b-488c-b5b2-79643eac063b",
+      "name": "Call 'Video rendering'",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        288,
+        48
+      ],
+      "id": "802467aa-c2c6-408b-a710-eabb8c57bb33",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "-1003735970138",
+        "text": "=📱 Instagram Caption\n\n\nCrypto Update der letzten 24 Stunden.\n\nSchneller Überblick über Marktbewegungen und die wichtigsten Entwicklungen im Kryptomarkt.\n\nRedaktionsschluss: {{ $json.timestamp }}\n\n#crypto #cryptonews #bitcoin #ethereum #cryptoupdate #dailycrypto #marketupdate #blockchain #web3",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        -144
+      ],
+      "id": "5b905950-eebf-4e35-b592-3c19dff71328",
+      "name": "Send Instagram caption",
+      "webhookId": "8ebb5687-f27f-4f49-8235-d935f221abee",
+      "credentials": {
+        "telegramApi": {
+          "id": "XSt2NLTZQtZZSEYL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-1003735970138",
+        "text": "=▶️ YouTube Shorts Caption   \n\nCrypto Market Update – letzte 24 Stunden \n\nRedaktionsschluss: {{ $json.timestamp }}  \n\n#crypto #bitcoin #cryptonews",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        -320
+      ],
+      "id": "46131b19-baa5-4753-bc04-5841d4a5e61d",
+      "name": "Send Youtube caption",
+      "webhookId": "368b0d86-596c-4032-8e77-f73646364b62",
+      "credentials": {
+        "telegramApi": {
+          "id": "XSt2NLTZQtZZSEYL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-1003735970138",
+        "text": "=🎵 TikTok Caption   \n\nCrypto Update (letzte 24h)  \n\nRedaktionsschluss: {{ $json.timestamp }}  \n\n#crypto #cryptonews #bitcoin #cryptoupdate #fypcrypto",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        -496
+      ],
+      "id": "a12a9b20-04fc-4ffe-aca5-ab27f4e8381d",
+      "name": "Send TikTok caption",
+      "webhookId": "eda65169-d3df-4a4f-803a-18da01d6dbd8",
+      "credentials": {
+        "telegramApi": {
+          "id": "XSt2NLTZQtZZSEYL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scriptId = $json.scriptId || \"\";\n\n// reel_ entfernen\nlet timestamp = scriptId.replace(\"reel_\", \"\");\n\n// alles nach Sekunden abschneiden\nconst match = timestamp.match(/\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}/);\n\nreturn [\n  {\n    json: {\n      timestamp: match ? match[0] : timestamp\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -144
+      ],
+      "id": "96c3abc0-093f-4110-8884-2985d669d6d6",
+      "name": "Prepare \"Redaktionsschluss\""
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Call 'News_Intake_24h_Crypto_ONLY'": {
+      "main": [
+        [
+          {
+            "node": "Call 'Voice and Image Generator'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate scriptId": {
+      "main": [
+        [
+          {
+            "node": "Prepare \"Redaktionsschluss\"",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call 'News_Intake_24h_Crypto_ONLY'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Voice and Image Generator'": {
+      "main": [
+        [
+          {
+            "node": "Call 'Video rendering'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate scriptId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Instagram caption": {
+      "main": [
+        []
+      ]
+    },
+    "Send Youtube caption": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare \"Redaktionsschluss\"": {
+      "main": [
+        [
+          {
+            "node": "Send Instagram caption",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Youtube caption",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send TikTok caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2b72a87f-d486-4119-a6cf-336609da40c1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "019057418775f3f5bf39a92a7af2f0f09362297b99695254fe0fbfbafaf4e236"
+  },
+  "nodeGroups": [],
+  "id": "XvwKX49S493TsBlH",
+  "tags": []
+}

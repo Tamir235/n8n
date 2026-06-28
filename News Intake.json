@@ -1,0 +1,1100 @@
+{
+  "updatedAt": "2026-06-28T14:53:23.175Z",
+  "createdAt": "2026-01-23T19:10:36.093Z",
+  "id": "pT5wAtJd57wCEBhv",
+  "name": "News Intake",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -32,
+        480
+      ],
+      "id": "88030c50-8a55-43b5-bceb-1bfbfbe05aea",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        848,
+        480
+      ],
+      "id": "3a61b3eb-b446-404f-bb37-49bf6ec86a1a",
+      "name": "XML",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        592,
+        496
+      ],
+      "id": "e34a2598-a8b8-4550-ad8c-4fecf8c78ba5",
+      "name": "Coindesk - RSS Feed",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        848,
+        304
+      ],
+      "id": "0f0338ef-9b59-4729-b1f5-5874a12f14a4",
+      "name": "XML1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        848,
+        704
+      ],
+      "id": "10fe4760-2e7f-474f-b8e6-b6c3430a3a2c",
+      "name": "XML2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        848,
+        912
+      ],
+      "id": "9a08d664-ae15-4dde-9ecb-d436f65f81a7",
+      "name": "XML3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        848,
+        112
+      ],
+      "id": "5b99892c-69f2-46b7-a654-7a291632d7d6",
+      "name": "XML4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unified RSS Filter (24h) \u2014 source name hardcoded per branch\nconst data = items[0].json;\nconst sourceName = 'u.today';\n\nconst first = (v) => Array.isArray(v) ? v[0] : v;\nconst toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));\nconst stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim();\nconst decodeEntities = (s) =>\n  (s || '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\");\n\nconst now = Date.now();\nconst cutoff = now - 24 * 60 * 60 * 1000;\n\nconst channel = first(data?.rss?.channel) || data?.channel;\nconst rssItems = toArray(channel?.item);\n\nconst cleaned = rssItems\n  .map((it) => {\n    const title = stripHtml(first(it.title) || '');\n    const url = decodeEntities(first(it.link) || '');\n    const pubDateRaw = first(it.pubDate) || null;\n    const publishedAt = pubDateRaw ? new Date(pubDateRaw) : null;\n    const ts = publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt.getTime() : null;\n    const summary = stripHtml(first(it.description) || '');\n    const media = first(it['media:content']);\n    const imageUrl = media?.$?.url ? decodeEntities(media.$.url) : null;\n    const guidVal = first(it.guid);\n    const guid = typeof guidVal === 'object'\n      ? (guidVal?._ || guidVal?.['#text'] || null)\n      : (guidVal || null);\n    return { source: sourceName, title: title || null, url: url || null,\n      publishedAt: ts ? new Date(ts).toISOString() : null,\n      summary: summary || null, imageUrl, guid, _ts: ts };\n  })\n  .filter((a) => a.title && a.url && a._ts && a._ts >= cutoff)\n  .filter((a, idx, arr) => arr.findIndex((x) => x.url === a.url) === idx)\n  .sort((a, b) => a._ts - b._ts)\n  .map(({ _ts, ...rest }) => rest);\n\nreturn cleaned.map((a) => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        304
+      ],
+      "id": "09557577-4caf-44ea-bc03-fbd6ae7ef5b1",
+      "name": "Filter: letzte 24h"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unified RSS Filter (24h) \u2014 source name hardcoded per branch\nconst data = items[0].json;\nconst sourceName = 'coindesk';\n\nconst first = (v) => Array.isArray(v) ? v[0] : v;\nconst toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));\nconst stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim();\nconst decodeEntities = (s) =>\n  (s || '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\");\n\nconst now = Date.now();\nconst cutoff = now - 24 * 60 * 60 * 1000;\n\nconst channel = first(data?.rss?.channel) || data?.channel;\nconst rssItems = toArray(channel?.item);\n\nconst cleaned = rssItems\n  .map((it) => {\n    const title = stripHtml(first(it.title) || '');\n    const url = decodeEntities(first(it.link) || '');\n    const pubDateRaw = first(it.pubDate) || null;\n    const publishedAt = pubDateRaw ? new Date(pubDateRaw) : null;\n    const ts = publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt.getTime() : null;\n    const summary = stripHtml(first(it.description) || '');\n    const media = first(it['media:content']);\n    const imageUrl = media?.$?.url ? decodeEntities(media.$.url) : null;\n    const guidVal = first(it.guid);\n    const guid = typeof guidVal === 'object'\n      ? (guidVal?._ || guidVal?.['#text'] || null)\n      : (guidVal || null);\n    return { source: sourceName, title: title || null, url: url || null,\n      publishedAt: ts ? new Date(ts).toISOString() : null,\n      summary: summary || null, imageUrl, guid, _ts: ts };\n  })\n  .filter((a) => a.title && a.url && a._ts && a._ts >= cutoff)\n  .filter((a, idx, arr) => arr.findIndex((x) => x.url === a.url) === idx)\n  .sort((a, b) => a._ts - b._ts)\n  .map(({ _ts, ...rest }) => rest);\n\nreturn cleaned.map((a) => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        480
+      ],
+      "id": "1b7755c6-9369-4392-84b5-2fa70fd833e6",
+      "name": "Filter: letzte 24h1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unified RSS Filter (24h) \u2014 source name hardcoded per branch\nconst data = items[0].json;\nconst sourceName = 'thedefiant';\n\nconst first = (v) => Array.isArray(v) ? v[0] : v;\nconst toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));\nconst stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim();\nconst decodeEntities = (s) =>\n  (s || '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\");\n\nconst now = Date.now();\nconst cutoff = now - 24 * 60 * 60 * 1000;\n\nconst channel = first(data?.rss?.channel) || data?.channel;\nconst rssItems = toArray(channel?.item);\n\nconst cleaned = rssItems\n  .map((it) => {\n    const title = stripHtml(first(it.title) || '');\n    const url = decodeEntities(first(it.link) || '');\n    const pubDateRaw = first(it.pubDate) || null;\n    const publishedAt = pubDateRaw ? new Date(pubDateRaw) : null;\n    const ts = publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt.getTime() : null;\n    const summary = stripHtml(first(it.description) || '');\n    const media = first(it['media:content']);\n    const imageUrl = media?.$?.url ? decodeEntities(media.$.url) : null;\n    const guidVal = first(it.guid);\n    const guid = typeof guidVal === 'object'\n      ? (guidVal?._ || guidVal?.['#text'] || null)\n      : (guidVal || null);\n    return { source: sourceName, title: title || null, url: url || null,\n      publishedAt: ts ? new Date(ts).toISOString() : null,\n      summary: summary || null, imageUrl, guid, _ts: ts };\n  })\n  .filter((a) => a.title && a.url && a._ts && a._ts >= cutoff)\n  .filter((a, idx, arr) => arr.findIndex((x) => x.url === a.url) === idx)\n  .sort((a, b) => a._ts - b._ts)\n  .map(({ _ts, ...rest }) => rest);\n\nreturn cleaned.map((a) => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        704
+      ],
+      "id": "86fa2ad1-cf90-42d2-9a2b-fbc586c22558",
+      "name": "Filter: letzte 24h2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unified RSS Filter (24h) \u2014 source name hardcoded per branch\nconst data = items[0].json;\nconst sourceName = 'cryptonews';\n\nconst first = (v) => Array.isArray(v) ? v[0] : v;\nconst toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));\nconst stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim();\nconst decodeEntities = (s) =>\n  (s || '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\");\n\nconst now = Date.now();\nconst cutoff = now - 24 * 60 * 60 * 1000;\n\nconst channel = first(data?.rss?.channel) || data?.channel;\nconst rssItems = toArray(channel?.item);\n\nconst cleaned = rssItems\n  .map((it) => {\n    const title = stripHtml(first(it.title) || '');\n    const url = decodeEntities(first(it.link) || '');\n    const pubDateRaw = first(it.pubDate) || null;\n    const publishedAt = pubDateRaw ? new Date(pubDateRaw) : null;\n    const ts = publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt.getTime() : null;\n    const summary = stripHtml(first(it.description) || '');\n    const media = first(it['media:content']);\n    const imageUrl = media?.$?.url ? decodeEntities(media.$.url) : null;\n    const guidVal = first(it.guid);\n    const guid = typeof guidVal === 'object'\n      ? (guidVal?._ || guidVal?.['#text'] || null)\n      : (guidVal || null);\n    return { source: sourceName, title: title || null, url: url || null,\n      publishedAt: ts ? new Date(ts).toISOString() : null,\n      summary: summary || null, imageUrl, guid, _ts: ts };\n  })\n  .filter((a) => a.title && a.url && a._ts && a._ts >= cutoff)\n  .filter((a, idx, arr) => arr.findIndex((x) => x.url === a.url) === idx)\n  .sort((a, b) => a._ts - b._ts)\n  .map(({ _ts, ...rest }) => rest);\n\nreturn cleaned.map((a) => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        912
+      ],
+      "id": "adbb7bfe-5081-4758-a399-26dcecc8ec50",
+      "name": "Filter: letzte 24h3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Unified RSS Filter (24h) \u2014 source name hardcoded per branch\nconst data = items[0].json;\nconst sourceName = 'cointelegraph';\n\nconst first = (v) => Array.isArray(v) ? v[0] : v;\nconst toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));\nconst stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim();\nconst decodeEntities = (s) =>\n  (s || '')\n    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\");\n\nconst now = Date.now();\nconst cutoff = now - 24 * 60 * 60 * 1000;\n\nconst channel = first(data?.rss?.channel) || data?.channel;\nconst rssItems = toArray(channel?.item);\n\nconst cleaned = rssItems\n  .map((it) => {\n    const title = stripHtml(first(it.title) || '');\n    const url = decodeEntities(first(it.link) || '');\n    const pubDateRaw = first(it.pubDate) || null;\n    const publishedAt = pubDateRaw ? new Date(pubDateRaw) : null;\n    const ts = publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt.getTime() : null;\n    const summary = stripHtml(first(it.description) || '');\n    const media = first(it['media:content']);\n    const imageUrl = media?.$?.url ? decodeEntities(media.$.url) : null;\n    const guidVal = first(it.guid);\n    const guid = typeof guidVal === 'object'\n      ? (guidVal?._ || guidVal?.['#text'] || null)\n      : (guidVal || null);\n    return { source: sourceName, title: title || null, url: url || null,\n      publishedAt: ts ? new Date(ts).toISOString() : null,\n      summary: summary || null, imageUrl, guid, _ts: ts };\n  })\n  .filter((a) => a.title && a.url && a._ts && a._ts >= cutoff)\n  .filter((a, idx, arr) => arr.findIndex((x) => x.url === a.url) === idx)\n  .sort((a, b) => a._ts - b._ts)\n  .map(({ _ts, ...rest }) => rest);\n\nreturn cleaned.map((a) => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        112
+      ],
+      "id": "36ca0d7d-c439-4abd-9223-dbad8555ddce",
+      "name": "Filter: letzte 24h4"
+    },
+    {
+      "parameters": {
+        "url": "https://thedefiant.io/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        704
+      ],
+      "id": "42a4303a-5c3a-4422-9d52-d4011c52c300",
+      "name": "The Defiant - RSS Feed"
+    },
+    {
+      "parameters": {
+        "url": "https://cryptonews.com/news/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        912
+      ],
+      "id": "024570e3-5cd9-48c1-a5b7-8652ba3891fc",
+      "name": "Cryptonews - RSS Feed"
+    },
+    {
+      "parameters": {
+        "url": "https://cointelegraph.com/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        112
+      ],
+      "id": "563674b7-dfe0-43e0-9065-260efe49b72d",
+      "name": "Cointelegraph - RSS Feed"
+    },
+    {
+      "parameters": {
+        "url": "https://u.today/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        624,
+        304
+      ],
+      "id": "6c9e882f-fd2a-4408-8832-a26e907e6fcf",
+      "name": "u.today - RSS Feed"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1424,
+        416
+      ],
+      "id": "64bdd98e-d3cc-473b-902e-cc7fb48ed275",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "da604293-4281-4baf-a95b-9e9b654eed43",
+              "name": "source",
+              "value": "={{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "4da1e3ec-01ec-4499-a2fb-b65593e08ed0",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "8296ba76-ba0b-4a95-9e86-b17007413c04",
+              "name": "summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "91255427-4312-41be-bf03-bb86187519e0",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "2115bfba-7468-42d8-82d8-9f293ebc5f4a",
+              "name": "publishedAt",
+              "value": "={{ $json.publishedAt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        464
+      ],
+      "id": "ff601703-b507-44c0-a061-8624036eaa6a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node (Run Once for All Items)\n// RAW NEWS ONLY \u2013 no pricechanges, no max stories\n// Output: one-line agent-ready string (no line breaks)\n\nvar nowIso = new Date().toISOString();\nvar items = $input.all();\n\nvar stories = [];\n\n// Collect stories (any count)\nfor (var i = 0; i < items.length; i++) {\n  var j = items[i].json || {};\n  if (j.title && j.summary) {\n    stories.push({\n      title: String(j.title).replace(/\\s+/g, \" \").trim(),\n      summary: String(j.summary).replace(/\\s+/g, \" \").trim()\n    });\n  }\n}\n\n// Build one-line string\nvar parts = [];\nfor (var s = 0; s < stories.length; s++) {\n  var n = s + 1;\n  parts.push(n + \") \" + stories[s].title + \" \u2014 summary: \" + stories[s].summary);\n}\n\nvar text =\n  \"CRYPTO NEWS \u2013 RAW INPUT | \" +\n  \"Generated (UTC): \" + nowIso +\n  \" | Stories: \" + stories.length +\n  (parts.length ? \" | \" + parts.join(\" | \") : \"\");\n\nreturn [{\n  json: { text: text },\n  pairedItem: { item: 0 }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        464
+      ],
+      "id": "8d65a690-81d9-4976-bdfc-0d9525c3595e",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "df9fd79c-7d01-4134-85b5-5e228dd9c31d",
+              "name": "=title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "6bdfdce3-72c7-4b60-aeeb-044dab8c0bc3",
+              "name": "summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        464
+      ],
+      "id": "bc83d0f1-6fc5-4dc9-8a90-df7392ad30f3",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// NEWS CLUSTERING + SCORING (n8n compatible)\n// Input: items[].json = {source,title,summary,url,publishedAt}\n// Output: 1 best item per cluster, then keep ~50% by score (with safety minimum)\n// ==============================\n\n// ---------- PARAMS ----------\nconst PARAMS = {\n  // Clustering (moderately conservative -> avoids \"everything Bitcoin\" collapsing into 1 cluster)\n  JACCARD_TH: 0.26,\n  MIN_OVERLAP: 4,\n  SUMMARY_CHARS: 800,\n\n  // Token filtering (helps cluster quality)\n  TOO_COMMON_RATIO: 0.35,  // drop tokens appearing in >35% of docs\n  MIN_DF: 2,               // keep tokens that appear at least twice (if possible)\n\n  // Output shaping\n  TARGET_KEEP_RATIO: 0.50, // keep ~50% of clustered results\n  MIN_RESULTS: 12,         // safety: don't collapse to a tiny list unless there truly aren't enough\n  MAX_RESULTS: 30,         // hard cap\n\n  // Scoring weights\n  FACT_EVENT_BOOST: 1.0,   // multiplier for event keywords\n};\n\n// ---------- SOURCE WEIGHTS ----------\nconst SOURCE_WEIGHT = {\n  coindesk: 1.25,\n  cointelegraph: 1.05,\n  thedefiant: 1.05,\n  cryptonews: 0.80,\n  \"u.today\": 0.70,\n};\n\n// ---------- HARD EXCLUDES (ONLY the truly unwanted formats) ----------\nconst HARD_EXCLUDE_TITLE_PATTERNS = [\n  /\\bhere['\u2019]?s what happened in crypto today\\b/i,\n  /\\bwhat happened in crypto today\\b/i,\n  /\\bcrypto digest\\b/i,\n  /\\bmorning crypto report\\b/i,\n  /\\b\\[live\\]\\b/i,\n  /\\blive crypto news\\b/i,\n  /\\byour day-ahead look\\b/i,     // CoinDesk daybook-ish\n];\n\n// The EXACT type you said must never appear:\nconst HARD_EXCLUDE_COMMENTARY_ROUNDUP =\n  /\\bhere\\s+is\\s+what\\s+.*\\s+are\\s+saying\\b/i;\n\n// Optionally treat \u201cpodcast/video\u201d as non-news (kept as hard exclude to reduce noise)\nconst HARD_EXCLUDE_CONTENT_TYPE =\n  /\\b(podcast|podcasts|video|videos)\\b/i;\n\nfunction hardExclude(it) {\n  const t = (it.title || \"\");\n  const s = (it.summary || \"\");\n  const blob = `${t} ${s}`;\n\n  if (HARD_EXCLUDE_TITLE_PATTERNS.some(re => re.test(t))) return true;\n  if (HARD_EXCLUDE_COMMENTARY_ROUNDUP.test(t)) return true; // your banned example\n  if (HARD_EXCLUDE_CONTENT_TYPE.test(blob)) return true;\n\n  return false;\n}\n\n// ---------- SOFT \"NON-FACT\" SIGNALS (NOT excluded, only penalized) ----------\nconst SOFT_SPECULATION_PATTERNS = [\n  /\\bprice prediction\\b/i,\n  /\\bforecast\\b/i,\n  /\\bwhat['\u2019]?s next\\b/i,\n  /\\bcould\\b/i,\n  /\\bmay\\b/i,\n  /\\bmight\\b/i,\n  /\\bexpected\\b/i,\n  /\\btargets?\\b/i,\n  /\\bsigns?\\b/i,\n  /\\bwarning\\b/i,\n  /\\bwarns?\\b/i,\n  /\\bhow long until\\b/i,\n  /\\bwill\\b/i,\n];\n\nfunction speculationPenalty(title, summary) {\n  const t = title || \"\";\n  const s = summary || \"\";\n  const blob = `${t} ${s}`;\n\n  let p = 0;\n\n  // Questions are usually \u201cwhat next / will it \u2026\u201d\n  if (/\\?/.test(t)) p += 4;\n\n  // \u201cPrice prediction\u201d is extra speculative\n  if (/\\bprice prediction\\b/i.test(blob)) p += 6;\n\n  // mild speculative language\n  for (const re of SOFT_SPECULATION_PATTERNS) {\n    if (re.test(blob)) { p += 1; }\n  }\n\n  // cap penalty so it doesn't nuke everything\n  return Math.min(p, 10);\n}\n\n// ---------- KEYWORDS (EVENT / FACT SIGNALS) ----------\nconst KEYWORDS = [\n  // Policy / regulation / legal\n  { re: /\\b(cftc|sec|lawsuit|court|ruling|settlement|ban|bill|senate|house|probe|regulation|market structure)\\b/i, pts: 7 },\n  // Big institutions / banks / treasuries\n  { re: /\\b(deutsche bank|jpmorgan|treasury|bank|anchorage|custodial|custody|institutional)\\b/i, pts: 5 },\n  // ETFs / derivatives / flows\n  { re: /\\b(etf|outflows?|inflows?|open interest|liquidations?|futures|margin longs)\\b/i, pts: 5 },\n  // Stablecoins\n  { re: /\\b(stablecoin|usdc|usdt|tether|circle|depeg|reserves?)\\b/i, pts: 4 },\n  // Security incidents\n  { re: /\\b(hack|exploit|breach|attack|dark web|fbi)\\b/i, pts: 6 },\n  // Tokenization / RWA / infra\n  { re: /\\b(tokeni[sz]ed|tokeni[sz]ation|rwa|real world assets|settlement|layer-2|l2|blockchain)\\b/i, pts: 4 },\n  // Major assets (small boost; avoid dominating)\n  { re: /\\b(bitcoin|btc)\\b/i, pts: 1.5 },\n  { re: /\\b(ethereum|eth)\\b/i, pts: 1.0 },\n  { re: /\\b(xrp|solana|dogecoin|shib|cardano|bnb)\\b/i, pts: 0.8 },\n];\n\nfunction keywordPoints(text) {\n  let pts = 0;\n  for (const k of KEYWORDS) if (k.re.test(text)) pts += k.pts;\n  return pts * PARAMS.FACT_EVENT_BOOST;\n}\n\n// Numeric facts bonus: $xxxM/B, %, dates, etc.\nfunction numericFactsBonus(text) {\n  let b = 0;\n  if (/\\$\\s?\\d/.test(text) || /\\b\\d+(\\.\\d+)?\\s?(million|billion|m|bn)\\b/i.test(text)) b += 2.5;\n  if (/\\b\\d+(\\.\\d+)?\\s?%\\b/.test(text)) b += 1.5;\n  if (/\\b(q[1-4]|quarter|q4|q3|q2|q1)\\b/i.test(text)) b += 1.0;\n  return b;\n}\n\n// Recency bonus\nfunction recencyPoints(dateStr) {\n  const ts = new Date(dateStr).getTime();\n  if (!ts) return 0;\n  const mins = (Date.now() - ts) / 60000;\n  if (mins <= 60) return 5;\n  if (mins <= 360) return 3;\n  if (mins <= 1440) return 1.5;\n  if (mins <= 4320) return 0.5; // last 3 days\n  return 0;\n}\n\n// ---------- TOKENIZATION ----------\nconst STOPWORDS = new Set([\n  \"the\",\"a\",\"an\",\"and\",\"or\",\"to\",\"of\",\"in\",\"on\",\"for\",\"with\",\"as\",\"at\",\"by\",\"from\",\n  \"is\",\"are\",\"was\",\"were\",\"be\",\"been\",\"it\",\"this\",\"that\",\"these\",\"those\",\n  \"today\",\"report\",\"update\",\"markets\",\"market\",\"crypto\",\"price\",\n  \"here\",\"because\",\"before\",\"after\",\"into\",\"over\",\"under\",\"near\",\"amid\",\n  \"says\",\"said\" // reduces \u201cquote style\u201d clustering noise\n]);\n\nfunction normalizeToken(w) {\n  // strip surrounding punctuation already mostly removed, but keep safe\n  w = w.toLowerCase();\n\n  // Drop pure numbers\n  if (/^\\d+$/.test(w)) return null;\n\n  // Keep short alnum like \"l2\"\n  if (/^[a-z]\\d$/.test(w)) return w;\n\n  // If token contains digits (e.g., usd70), drop digits part to reduce clustering on numbers\n  if (/[0-9]/.test(w)) {\n    const letters = w.replace(/[0-9]/g, \"\");\n    if (letters.length >= 3) return letters;\n    // else ignore noisy tokens like \"70k\", \"2k\"\n    return null;\n  }\n\n  return w;\n}\n\nfunction tokenize(text) {\n  return (text || \"\")\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s]/g, \" \")\n    .split(/\\s+/)\n    .map(normalizeToken)\n    .filter(w =>\n      w &&\n      w.length >= 3 &&\n      !STOPWORDS.has(w)\n    );\n}\n\n// ---------- CLUSTER HELPERS ----------\nfunction jaccard(a, b) {\n  let i = 0;\n  for (const x of a) if (b.has(x)) i++;\n  const u = a.size + b.size - i;\n  return u ? i / u : 0;\n}\n\nfunction overlapCount(a, b) {\n  let c = 0;\n  for (const x of a) if (b.has(x)) c++;\n  return c;\n}\n\n// Create a readable cluster key (top tokens)\nfunction buildClusterKey(tokenSet, freqMap) {\n  const tokens = Array.from(tokenSet);\n\n  // prefer rarer tokens (approx IDF) => sort by increasing DF\n  tokens.sort((t1, t2) => (freqMap.get(t1) || 9999) - (freqMap.get(t2) || 9999));\n\n  // pick a few\n  return tokens.slice(0, 6).join(\" | \");\n}\n\n// ---------- URL CANONICALIZATION (strip utm_...) ----------\nfunction canonicalUrl(url) {\n  try {\n    const u = new URL(url);\n    // remove utm_* params\n    for (const k of Array.from(u.searchParams.keys())) {\n      if (k.toLowerCase().startsWith(\"utm_\")) u.searchParams.delete(k);\n    }\n    // normalize\n    u.hash = \"\";\n    return u.toString();\n  } catch {\n    return url;\n  }\n}\n\n// ==============================\n// MAIN\n// ==============================\n\n// 1) Canonical URL dedupe + HARD EXCLUDES\nconst seen = new Set();\nconst raw = [];\nfor (const it of items.map(i => i.json)) {\n  if (!it?.title || !it?.url) continue;\n\n  const cu = canonicalUrl(it.url);\n  if (seen.has(cu)) continue;\n  if (hardExclude(it)) continue;\n\n  seen.add(cu);\n  raw.push({ ...it, url: cu });\n}\n\n// 2) Build token sets + DF stats\nconst tokenSets = [];\nconst freq = new Map();\n\nfor (const a of raw) {\n  const set = new Set(tokenize(`${a.title} ${(a.summary || \"\").slice(0, PARAMS.SUMMARY_CHARS)}`));\n  tokenSets.push(set);\n  for (const t of set) freq.set(t, (freq.get(t) || 0) + 1);\n}\n\n// Filter out too-common tokens (keeps clustering meaningful)\nconst tooCommon = Math.ceil(raw.length * PARAMS.TOO_COMMON_RATIO);\n\nfunction filteredSet(set) {\n  const out = new Set();\n  for (const t of set) {\n    const f = freq.get(t) || 0;\n    // if dataset is small, don't over-filter: allow MIN_DF=1 fallback\n    const minDf = raw.length < 25 ? 1 : PARAMS.MIN_DF;\n    if (f >= minDf && f <= tooCommon) out.add(t);\n  }\n  return out;\n}\n\nconst filteredTokenSets = tokenSets.map(filteredSet);\n\n// 3) Clustering\nconst clusters = [];\n\nfor (let i = 0; i < raw.length; i++) {\n  const tok = filteredTokenSets[i].size ? filteredTokenSets[i] : tokenSets[i];\n\n  let bestIdx = -1;\n  let bestSim = 0;\n\n  for (let j = 0; j < clusters.length; j++) {\n    const ov = overlapCount(tok, clusters[j].tokens);\n    const jac = jaccard(tok, clusters[j].tokens);\n\n    // gate\n    if (ov < PARAMS.MIN_OVERLAP && jac < PARAMS.JACCARD_TH) continue;\n\n    // similarity score\n    const sim = Math.max(jac, ov / 12);\n    if (sim > bestSim) {\n      bestSim = sim;\n      bestIdx = j;\n    }\n  }\n\n  if (bestIdx === -1) {\n    clusters.push({ tokens: new Set(tok), items: [raw[i]] });\n  } else {\n    clusters[bestIdx].items.push(raw[i]);\n    tok.forEach(t => clusters[bestIdx].tokens.add(t));\n  }\n}\n\n// 4) Score each item; pick best representative per cluster\nfunction scoreItem(a) {\n  const text = `${a.title} ${a.summary || \"\"}`;\n\n  const sw = SOURCE_WEIGHT[(a.source || \"\").toLowerCase()] ?? 0.85;\n\n  const base = sw * 6; // small, so keywords & facts matter more\n  const kpts = keywordPoints(text);\n  const nbonus = numericFactsBonus(text);\n  const rpts = recencyPoints(a.publishedAt);\n\n  const pen = speculationPenalty(a.title, a.summary);\n\n  // final score\n  const score = base + kpts + nbonus + rpts - pen;\n\n  return Number(score.toFixed(2));\n}\n\nconst results = [];\n\nfor (const c of clusters) {\n  let best = null;\n  for (const a of c.items) {\n    const score = scoreItem(a);\n    if (!best || score > best.score) {\n      best = {\n        ...a,\n        score,\n        clusterSize: c.items.length,\n        clusterKey: buildClusterKey(c.tokens, freq),\n      };\n    }\n  }\n  if (best) results.push(best);\n}\n\nresults.sort((a, b) => b.score - a.score);\n\n// 5) Keep ~50% ONLY ONCE (no MIN_SCORE), with minimum safeguard\nconst total = results.length;\n\nconst keepNRaw = Math.round(total * PARAMS.TARGET_KEEP_RATIO);\nconst keepN = Math.min(\n  PARAMS.MAX_RESULTS,\n  Math.max(Math.min(PARAMS.MIN_RESULTS, total), keepNRaw)\n);\n\nconst finalOut = results.slice(0, keepN);\n\n// 6) Meta\nconst meta = {\n  inputItems: items.length,\n  afterUrlDedupeAndHardExcludes: raw.length,\n  clusters: clusters.length,\n  biggestClusters: clusters.map(c => c.items.length).sort((a, b) => b - a).slice(0, 10),\n  outputAfterKeepRatioAndCap: finalOut.length,\n  params: PARAMS,\n};\n\nconst output = [];\n\n// Meta-Item\noutput.push({\n  json: { _meta: meta },\n  pairedItem: { item: 0 }\n});\n\n// Artikel\nfor (let i = 0; i < finalOut.length; i++) {\n  output.push({\n    json: finalOut[i],\n    pairedItem: { item: 0 }\n  });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        464
+      ],
+      "id": "cc26e99f-f122-4f03-a63a-c5a2037ba936",
+      "name": "News-Scoring- und Clustering-Skript"
+    },
+    {
+      "parameters": {
+        "url": "https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22XRPUSDT%22%5D",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        608,
+        1152
+      ],
+      "id": "c2fab1ac-8ab6-47c4-a097-1df8f46617b6",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "include": "specifiedFields",
+        "fieldsToInclude": "symbol, priceChangePercent",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        928,
+        1152
+      ],
+      "id": "87363ec4-b13d-4d7f-931d-01540d9fe2bd",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.filter(item => !item.json._meta);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        464
+      ],
+      "id": "7febbd29-828f-403c-8f5b-7ff8f25e01f0",
+      "name": "Remove Meta"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node (Run Once for All Items)\n\nconst PRECISION = 1;\n\nfunction formatMove(name, pct) {\n  const value = Number(pct);\n\n  if (value > 0) {\n    return `${name} changed by approximately +${value.toFixed(PRECISION)}%`;\n  } else {\n    return `${name} changed by approximately -${Math.abs(value).toFixed(PRECISION)}%`;\n  }\n}\n\nconst input = $input.all()[0].json;\nconst data = input.data;\n\nconst output = {};\n\nfor (let i = 0; i < data.length; i++) {\n  const row = data[i];\n  const symbol = String(row.symbol || \"\");\n  const pct = row.priceChangePercent;\n\n  if (symbol.startsWith(\"BTC\")) output.BTC_change = formatMove(\"Bitcoin\", pct);\n  if (symbol.startsWith(\"ETH\")) output.ETH_change = formatMove(\"Ethereum\", pct);\n  if (symbol.startsWith(\"XRP\")) output.XRP_change = formatMove(\"XRP\", pct);\n  if (symbol.startsWith(\"SOL\")) output.SOL_change = formatMove(\"Solana\", pct);\n}\n\nreturn [{ json: output }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        1152
+      ],
+      "id": "59760b16-016d-4e4e-871b-83cb5b542baf",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5",
+          "mode": "list",
+          "cachedResultName": "gpt-5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3120,
+        672
+      ],
+      "id": "6f5f3678-eb72-4da4-b500-ac050c7dc340",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3936,
+        1168
+      ],
+      "id": "377bf0b5-dfa2-48ae-aaab-015a7ee8e367",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "56ae88c8-f29e-40d6-8db7-434bba608ba1",
+              "name": "Changes",
+              "value": "={{ $json.BTC_change }} {{ $json.ETH_change }} {{ $json.SOL_change }} {{ $json.XRP_change }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2384,
+        1104
+      ],
+      "id": "eca57bda-0218-42ea-aecf-8c52c85a7d82",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"market_snapshot\": {\n    \"voiceover_text\": \"...\",\n    \"image_prompt\": \"...\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        4080,
+        1168
+      ],
+      "id": "bc3092d7-aa85-40b0-8bf3-ca142a976a78",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3472,
+        672
+      ],
+      "id": "7e364259-6cf1-4fce-a425-8f9506c74c72",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the JSON string inside \"output\"\nconst raw = items[0].json.output;\nconst parsed = JSON.parse(raw);\n\n// Transform structure\nconst transformed = {\n  clips: parsed.clips.map(clip => ({\n    news_type: clip.type,\n    voiceover: clip.voiceover_text,\n    image_prompt: clip.image_prompt\n  }))\n};\n\n// Return clean JSON\nreturn [\n  {\n    json: transformed\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        464
+      ],
+      "id": "b0a20969-6ac9-4325-b3a8-fcc4d82eadef",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        5168,
+        592
+      ],
+      "id": "c9851683-4fab-4e54-92a8-e2bf11ba0e75",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d9858b1e-f1e2-4f73-a80f-a202e1d894f5",
+              "name": "voiceover",
+              "value": "={{ $json.output.market_snapshot.voiceover_text }}",
+              "type": "string"
+            },
+            {
+              "id": "fcf5efad-54ad-4321-83cd-8fab0b574aaa",
+              "name": "image_prompt",
+              "value": "={{ $json.output.market_snapshot.image_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "3d965c00-c8af-4851-aabf-70b53b66805d",
+              "name": "scriptId",
+              "value": "={{ $('When Executed by Another Workflow').item.json.scriptId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4512,
+        944
+      ],
+      "id": "1f676615-67ac-4c9e-998c-d504933faa62",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet scriptId = null;\nlet clips = [];\nlet clipIndex = 0;\n\nfor (const it of items) {\n  const j = it.json;\n\n  if (!scriptId && j.scriptId) {\n    scriptId = j.scriptId;\n  }\n\n  // Intro (wenn root-level voiceover vorhanden)\n  if (j.voiceover && j.image_prompt) {\n    clips.push({\n      clipIndex: clipIndex++,\n      type: \"market_overview\",\n      voiceover: j.voiceover,\n      image_prompt: j.image_prompt\n    });\n  }\n\n  // News-Clips\n  if (Array.isArray(j.clips)) {\n    for (const c of j.clips) {\n      clips.push({\n        clipIndex: clipIndex++,\n        type: \"news\",\n        voiceover: c.voiceover,\n        image_prompt: c.image_prompt\n      });\n    }\n  }\n}\n\nreturn [{\n  json: {\n    scriptId,\n    clips\n  },\n  pairedItem: { item: 0 }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5536,
+        592
+      ],
+      "id": "89334ba8-5cdf-4331-a75a-5a01a82cd676",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional crypto news editor for daily short-form video content.\n\nYour task:\nFrom the following RAW crypto news text input, extract and select the MOST IMPORTANT news according to a FIXED REEL STRUCTURE.\n\nIMPORTANT:\n- The input is UNSTRUCTURED text\n- It contains metadata and multiple numbered crypto news stories\n- You must first IDENTIFY and SEPARATE individual news items\n- Then select the most relevant ones\n\nTIMEFRAME:\n- Only consider news from the LAST 24 HOURS\n- Use the \"Generated (UTC)\" timestamp in the text as reference\n\nDATA HANDLING RULES:\n- Ignore formatting, numbering, or separators in the input\n- Treat each numbered story as one potential news item\n- Ignore pure price analysis articles and speculative forecasts\n- Focus on real events, decisions, actions, or incidents\n\n---\n\nREEL STRUCTURE & SELECTION LOGIC:\n\n1) MARKET OVERVIEW (Context)\n- represent overall crypto market behavior\n- Prefer:\n  - Broad market signals\n  - Institutional or ecosystem-wide developments\n- Avoid:\n  - Technical indicators\n  - Short-term price predictions\n  - Single-coin price analysis\n\n2) BIG NEWS #1 (Relevance)\n- The MOST impactful crypto development in the last 24h\n- Examples:\n  - Institutional adoption\n  - Major exchange actions\n  - Large capital movements\n  - Significant ecosystem expansions\n\n3) BIG NEWS #2 (Depth)\n- Second most important development\n- More specific, but still high impact\n- Examples:\n  - Infrastructure launches\n  - Network or protocol decisions\n  - Strategic ecosystem changes\n\n4) ADDITIONAL NEWS (Value)\n- One secondary but still relevant development\n- Adds useful context or insight\n- Examples:\n  - Whale activity\n  - Strategic investments\n  - Industry shifts\n\n5) SECURITY OR REGULATION (Trust)\n- ONE item related to:\n  - Hacks\n  - Exploits\n  - Scams\n  - Regulatory investigations or enforcement\n- If no major incident exists:\n  - Select the strongest available regulatory or security-related story\n\n---\n\nEXCLUSION RULES:\n- No duplicate stories\n- No opinion pieces\n- No long-term forecasts\n- No repetitive technical analysis\n- Avoid sensational headlines without concrete facts\n\n---\n\nSPECIAL HANDLING RULES (VERY IMPORTANT):\n- If multiple candidates fit a slot, choose the one with the highest real-world impact\n- If the last 24 hours were unusually quiet, clearly indicate reduced impact in the market overview\n- Prefer accuracy and clarity over excitement at all times\n\n---\n\nOUTPUT FORMAT (JSON ONLY, NO EXPLANATION):\n\n[\n  {\n    \"text\": \"MARKET OVERVIEW (Last 24h):\n<1\u20132 sentences summarizing overall crypto market behavior in simple, neutral language>\n\nBIG NEWS #1:\n<Headline> \u2014 summary: <short, factual summary>\n\nBIG NEWS #2:\n<Headline> \u2014 summary: <short, factual summary>\n\nADDITIONAL NEWS:\n<Headline> \u2014 summary: <short, factual summary>\n\nSECURITY / REGULATION:\n<Headline> \u2014 summary: <short, factual summary>\n\nGenerated (UTC): <timestamp>\"\n  }\n]\n\nREQUIREMENTS:\n- EXACTLY 5 news items (one per section)\n- All five sections must be present\n- Use clear line breaks and separators\n- Do NOT add emojis\n- Do NOT add opinions or predictions\n- Language must be simple, neutral, and easy to understand\n- output must be in german language but only for the voiceovers anything else must be english language\n\nHere is the RAW crypto news text to analyze:\n{{ $json.text }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        3120,
+        464
+      ],
+      "id": "64c2559b-1179-4d17-8379-cc5dae605409",
+      "name": "Crypto News Editor",
+      "retryOnFail": true,
+      "waitBetweenTries": 500,
+      "maxTries": 5
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional short-form crypto content creator.\n\nYour task:\nFrom the structured crypto news, extract each section and generate EXACTLY ONE clip per section.\n\nGenerate EXACTLY 5 clips in ONE JSON object.\n\nRequired news types (each exactly once):\n\nmarket_overview\nbig_news_1\nbig_news_2\nadditional_news\nsecurity_or_regulation\n\nCRITICAL OUTPUT RULES:\n\nReturn ONE valid JSON object only\nTop-level key: \"clips\"\n\"clips\" = array with exactly 5 objects\nNo extra wrapping, no markdown, no explanations\nNo stringified JSON\nMust start with { and end with }\n\nFIELD RULES (STRICT):\n\nEach clip must contain EXACTLY:\n\n\"news_type\"\n\"voiceover_text\"\n\"image_prompt\"\n\nNo renaming, no extra fields.\n\nVOICEOVER RULES:\n\nGerman language ONLY\n14\u201320 words (\u22484\u20136 seconds)\nNeutral, factual, no hype, no predictions\nExplain what happened + why it matters\n\nNUMBER FORMATTING (MANDATORY):\n\nUse numeric format only (e.g. 4.4%, 3%)\nLarge numbers in German compact style:\n\"65.000 $\" = \"65 Tausend $\"\n\"3.500.000 Euro\" = \"3,5 Millionen \u20ac\"\n\"135.700 Dollar\" = \"135,7 Tausend $\"\nAlways use currency symbols ($, \u20ac), never words\n\nSUBTITLE OPTIMIZATION (VERY IMPORTANT):\n\nAvoid long compound words\nSplit long words with spacing\n(e.g. \"Markt Bewegung\", \"Regulierungs Rahmen\")\nKeep words short enough for TikTok/Reel subtitles\nEnsure clean line breaks and readability\n\nIMAGE PROMPT RULES:\n\nEach clip must have a UNIQUE visual concept (no repetition in subject, composition, or metaphor).\n\nTheme per news_type:\n\nmarket_overview \u2192 abstract global macro scene, no people\nbig_news_1 \u2192 institutional/corporate, structured, authoritative\nbig_news_2 \u2192 technical/system, networks, architecture\nadditional_news \u2192 growth/adoption, dynamic but controlled\nsecurity_or_regulation \u2192 protection/control, calm serious tone\n\nGeneral rules:\n\nabstract or symbolic only\nno phones, laptops, or trading screens\nno visible text\nhigh contrast, clean editorial look\n\nAlways append EXACTLY:\nsimple modern comic illustration, flat colors, clean outlines, expressive characters, minimal background, high contrast, social media friendly, vertical 9:16\n\nINPUT:\n{{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        3472,
+        464
+      ],
+      "id": "61fffe32-ca90-4a66-8cfe-8c2bfc973c71",
+      "name": "Crypto Content Creator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional short-form crypto content creator.\n\nYour task:\nUsing the following crypto market change data, create EXACTLY ONE visual prompt and ONE voiceover text that summarize ALL changes together.\n\nINPUT DATA:\n{{ $json.Changes }}\n\nIMPORTANT VOICEOVER RULE (STRICT):\n- The voiceover MUST start directly with \u201cBitcoin\u2026\u201d\n- Do NOT use any introduction phrases such as:\n  \u201cMixed market\u201d, \u201cMarket update\u201d, \u201cCrypto session\u201d, or similar\n- List the assets in this exact order:\n  Bitcoin \u2192 Ethereum \u2192 Solana \u2192 XRP\n\n---\n\nVOICEOVER REQUIREMENTS:\n- 4\u20136 seconds when spoken\n- About 12\u201318 words\n- Neutral, factual tone\n- Only state the percentage changes\n- No opinions, no hype, no predictions\n- output must be in german language but only for the voiceovers anything else must be english language\n- Always write percentages as numeric percentage values, for example \u201c4,4%\u201d or \u201c3%\u201d\n- Always write the percentage sign\n---\n\nIMAGE PROMPT REQUIREMENTS:\n- ONE image only\n- Must visually represent the crypto market\n- Include visual references to Bitcoin, Ethereum, Solana, and XRP\n- NO phones, NO laptops, NO tablets, NO trading screens\n- NO repeated objects from intro visuals\n- Use abstract motion, light trails, and symbolic shapes instead\n- NO text in the image\n\nCOLOR & STYLE DIRECTION (MANDATORY):\n- Dominant deep blue and midnight tones\n- Electric cyan and neon blue highlights\n- Warm gold accents on Bitcoin\n- Subtle orange light trails to suggest market movement\n- High contrast, cinematic but calm and professional\n\nALWAYS include the following style description verbatim:\n\n\"simple modern comic illustration, flat colors, clean outlines, expressive characters, minimal background, high contrast, social media friendly, vertical 9:16\"\n\n---\n\nOUTPUT FORMAT:\nReturn JSON ONLY.\nDo NOT include explanations or extra text.\n\n{\n  \"market_snapshot\": {\n    \"voiceover_text\": \"...\",\n    \"image_prompt\": \"...\"\n  }\n}\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        3936,
+        976
+      ],
+      "id": "e6c81d4d-6e1e-4389-806f-9dc6b62e7d24",
+      "name": "Market Snapshot"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Coindesk - RSS Feed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cointelegraph - RSS Feed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cryptonews - RSS Feed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "The Defiant - RSS Feed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "u.today - RSS Feed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Filter: letzte 24h1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coindesk - RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML1": {
+      "main": [
+        [
+          {
+            "node": "Filter: letzte 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML2": {
+      "main": [
+        [
+          {
+            "node": "Filter: letzte 24h2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML3": {
+      "main": [
+        [
+          {
+            "node": "Filter: letzte 24h3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML4": {
+      "main": [
+        [
+          {
+            "node": "Filter: letzte 24h4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: letzte 24h1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Filter: letzte 24h2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Filter: letzte 24h3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "The Defiant - RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "XML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cryptonews - RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "XML3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cointelegraph - RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "XML4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: letzte 24h4": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: letzte 24h": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "u.today - RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "XML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "News-Scoring- und Clustering-Skript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "News-Scoring- und Clustering-Skript": {
+      "main": [
+        [
+          {
+            "node": "Remove Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Meta": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Crypto News Editor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Crypto News Editor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Market Snapshot",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Market Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Market Snapshot",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Crypto Content Creator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto News Editor": {
+      "main": [
+        [
+          {
+            "node": "Crypto Content Creator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto Content Creator": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Market Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "28c49b6e-415d-4f1c-9f7b-9d59f3d8002a",
+  "activeVersionId": null,
+  "versionCounter": 368,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-03-16T20:06:22.241Z",
+      "createdAt": "2026-03-16T20:06:22.241Z",
+      "role": "workflow:owner",
+      "workflowId": "pT5wAtJd57wCEBhv",
+      "projectId": "6ORlgmLXWvR008RF",
+      "project": {
+        "updatedAt": "2026-01-23T18:53:25.000Z",
+        "createdAt": "2026-01-23T18:50:27.846Z",
+        "id": "6ORlgmLXWvR008RF",
+        "name": "News",
+        "type": "team",
+        "icon": {
+          "type": "icon",
+          "value": "layers"
+        },
+        "description": "",
+        "customTelemetryTags": [],
+        "creatorId": null
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

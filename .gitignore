@@ -1,0 +1,37 @@
+# Claude Code Skills (local only)
+brandkit/
+caveman/
+design-taste-frontend/
+diagnose/
+emil-design-eng/
+full-output-enforcement/
+gpt-taste/
+grill-me/
+grill-with-docs/
+handoff/
+high-end-visual-design/
+image-to-code/
+imagegen-frontend-mobile/
+imagegen-frontend-web/
+impeccable/
+improve-codebase-architecture/
+industrial-brutalist-ui/
+minimalist-ui/
+prototype/
+redesign-existing-projects/
+setup-matt-pocock-skills/
+skills/
+stitch-design-taste/
+tdd/
+to-issues/
+to-prd/
+triage/
+write-a-skill/
+zoom-out/
+SKILL.md
+
+# Backups (nie in Git)
+backups/
+
+# macOS
+.DS_Store

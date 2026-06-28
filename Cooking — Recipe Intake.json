@@ -1,0 +1,459 @@
+{
+    "updatedAt": "2026-06-28T14:51:24.909Z",
+    "createdAt": "2026-06-28T14:51:24.909Z",
+    "id": "B2BrjjbqFhUgeHZV",
+    "name": "Cooking \u2014 Recipe Intake",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+        {
+            "id": "node-trigger",
+            "name": "When Executed by Another Workflow",
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                0,
+                300
+            ],
+            "parameters": {
+                "inputSource": "passthrough"
+            }
+        },
+        {
+            "id": "node-generate-scriptid",
+            "name": "Generate scriptId",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                300,
+                300
+            ],
+            "parameters": {
+                "jsCode": "const now = new Date();\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Europe/Berlin',\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n}).formatToParts(now);\nconst dp = Object.fromEntries(parts.map(p => [p.type, p.value]));\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\nconst scriptId = `cooking_${dp.year}-${dp.month}-${dp.day}T${dp.hour}-${dp.minute}-${dp.second}-${ms}Z`;\n\nconst input = $input.first().json;\nconst inputType = input.inputType ?? 'dish_name';\nconst inputValue = input.inputValue ?? 'Pasta Carbonara';\n\nreturn [{ json: { scriptId, inputType, inputValue } }];"
+            }
+        },
+        {
+            "id": "node-switch",
+            "name": "Route Input",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3,
+            "position": [
+                600,
+                300
+            ],
+            "parameters": {
+                "mode": "expression",
+                "output": "={{ $json.inputType }}",
+                "rules": {
+                    "values": [
+                        {
+                            "outputKey": "url",
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict"
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "cond-url",
+                                        "leftValue": "={{ $json.inputType }}",
+                                        "rightValue": "url",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": false
+                        },
+                        {
+                            "outputKey": "dish_name",
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict"
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "cond-dish",
+                                        "leftValue": "={{ $json.inputType }}",
+                                        "rightValue": "dish_name",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": false
+                        }
+                    ]
+                },
+                "options": {
+                    "fallbackOutput": "extra"
+                }
+            }
+        },
+        {
+            "id": "node-scrape-url",
+            "name": "Scrape Recipe URL",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                900,
+                100
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $json.inputValue }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "text"
+                        }
+                    }
+                },
+                "onError": "continueRegularOutput"
+            }
+        },
+        {
+            "id": "node-spoonacular-search",
+            "name": "Spoonacular Search",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                900,
+                500
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "https://api.spoonacular.com/recipes/complexSearch",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "query",
+                            "value": "={{ $json.inputValue }}"
+                        },
+                        {
+                            "name": "number",
+                            "value": "1"
+                        },
+                        {
+                            "name": "apiKey",
+                            "value": "SPOONACULAR_API_KEY_PLACEHOLDER"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "node-openai-lm",
+            "name": "OpenAI Chat Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                0
+            ],
+            "parameters": {
+                "model": "gpt-4.1-mini",
+                "options": {}
+            },
+            "credentials": {
+                "openAiApi": {
+                    "id": "v5ycd3YeDhUfrhQ2",
+                    "name": "OpenAi account"
+                }
+            }
+        },
+        {
+            "id": "node-parse-html",
+            "name": "Parse Recipe from HTML",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                1200,
+                100
+            ],
+            "parameters": {
+                "promptType": "define",
+                "text": "=Extract the recipe from this HTML page. Return ONLY valid JSON with this exact structure: {\"name\": \"...\", \"servings\": 2, \"prepTime\": \"10 min\", \"cookTime\": \"30 min\", \"ingredients\": [\"...\", \"...\"], \"steps\": [\"...\", \"...\"]}. HTML: {{ $json.data }}"
+            }
+        },
+        {
+            "id": "node-spoonacular-details",
+            "name": "Spoonacular Get Details",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                500
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=https://api.spoonacular.com/recipes/{{ $json.results[0].id }}/information",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "apiKey",
+                            "value": "SPOONACULAR_API_KEY_PLACEHOLDER"
+                        },
+                        {
+                            "name": "includeNutrition",
+                            "value": "false"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "node-normalize-spoonacular",
+            "name": "Normalize Spoonacular Recipe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1500,
+                500
+            ],
+            "parameters": {
+                "jsCode": "const d = $input.first().json;\nconst ingredients = (d.extendedIngredients || []).map(i => i.original);\nconst steps = [];\n(d.analyzedInstructions || []).forEach(block => {\n  (block.steps || []).forEach(s => steps.push(s.step));\n});\nreturn [{ json: {\n  name: d.title || 'Unknown',\n  servings: d.servings || 2,\n  prepTime: `${d.preparationMinutes || 0} min`,\n  cookTime: `${d.cookingMinutes || d.readyInMinutes || 0} min`,\n  ingredients,\n  steps\n}}];"
+            }
+        },
+        {
+            "id": "node-merge",
+            "name": "Merge Recipe",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 3,
+            "position": [
+                1800,
+                300
+            ],
+            "parameters": {
+                "mode": "passThrough",
+                "output": "first"
+            }
+        },
+        {
+            "id": "node-build-output",
+            "name": "Build Recipe Output",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                2100,
+                300
+            ],
+            "parameters": {
+                "mode": "manual",
+                "duplicateItem": false,
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "assign-scriptid",
+                            "name": "scriptId",
+                            "value": "={{ $('Generate scriptId').item.json.scriptId }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "assign-recipe-name",
+                            "name": "recipe.name",
+                            "value": "={{ $json.name }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "assign-recipe-servings",
+                            "name": "recipe.servings",
+                            "value": "={{ $json.servings }}",
+                            "type": "number"
+                        },
+                        {
+                            "id": "assign-recipe-preptime",
+                            "name": "recipe.prepTime",
+                            "value": "={{ $json.prepTime }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "assign-recipe-cooktime",
+                            "name": "recipe.cookTime",
+                            "value": "={{ $json.cookTime }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "assign-recipe-ingredients",
+                            "name": "recipe.ingredients",
+                            "value": "={{ $json.ingredients }}",
+                            "type": "array"
+                        },
+                        {
+                            "id": "assign-recipe-steps",
+                            "name": "recipe.steps",
+                            "value": "={{ $json.steps }}",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "options": {}
+            }
+        }
+    ],
+    "connections": {
+        "When Executed by Another Workflow": {
+            "main": [
+                [
+                    {
+                        "node": "Generate scriptId",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate scriptId": {
+            "main": [
+                [
+                    {
+                        "node": "Route Input",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Route Input": {
+            "main": [
+                [
+                    {
+                        "node": "Scrape Recipe URL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Spoonacular Search",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Scrape Recipe URL": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Recipe from HTML",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Spoonacular Search": {
+            "main": [
+                [
+                    {
+                        "node": "Spoonacular Get Details",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Parse Recipe from HTML",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Recipe from HTML": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Recipe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Spoonacular Get Details": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize Spoonacular Recipe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize Spoonacular Recipe": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Recipe",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Merge Recipe": {
+            "main": [
+                [
+                    {
+                        "node": "Build Recipe Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": null,
+    "versionId": "dfbda296-f65f-4dba-b145-e323d5a66398",
+    "activeVersionId": null,
+    "versionCounter": 1,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "shared": [
+        {
+            "updatedAt": "2026-06-28T14:51:24.911Z",
+            "createdAt": "2026-06-28T14:51:24.911Z",
+            "role": "workflow:owner",
+            "workflowId": "B2BrjjbqFhUgeHZV",
+            "projectId": "qK5OY1dAlcpuaDcJ",
+            "project": {
+                "updatedAt": "2025-08-24T15:22:22.446Z",
+                "createdAt": "2025-08-24T15:22:19.788Z",
+                "id": "qK5OY1dAlcpuaDcJ",
+                "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
+                "type": "personal",
+                "icon": null,
+                "description": null,
+                "customTelemetryTags": [],
+                "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": null
+}

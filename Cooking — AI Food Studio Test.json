@@ -1,0 +1,131 @@
+{
+  "name": "AI Food Studio — Test: Recipe to Production Plan",
+  "active": false,
+  "nodes": [
+    {
+      "id": "node-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {}
+    },
+    {
+      "id": "node-sample-recipe",
+      "name": "Sample Recipe",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [540, 300],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-recipe-name",
+              "name": "recipe_name",
+              "value": "Pasta Carbonara",
+              "type": "string"
+            },
+            {
+              "id": "field-recipe-text",
+              "name": "recipe_text",
+              "value": "Rezept für 2 Personen. Zutaten: 200g Spaghetti, 100g Pancetta oder Guanciale, 3 Eigelb, 50g Pecorino Romano, 50g Parmesan, schwarzer Pfeffer, Salz. Zubereitung: 1. Pasta in Salzwasser al dente kochen. 2. Pancetta in einer Pfanne ohne Öl knusprig anbraten. 3. Eigelb mit geriebenem Käse und Pfeffer vermischen. 4. Pasta aus dem Wasser nehmen, etwas Kochwasser aufbewahren. 5. Heiße Pasta zu Pancetta geben, Herd aus. 6. Eier-Käse-Mischung einrühren, mit Kochwasser cremig machen. 7. Sofort servieren mit extra Käse und Pfeffer.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-openai-lm",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [840, 500],
+      "parameters": {
+        "model": "gpt-4.1",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "node-agent",
+      "name": "AI Food Studio — Director",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [840, 300],
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the AI FOOD STUDIO v1.0 — a complete Hollywood food production studio.\n\nMASTER SYSTEM — YOUR ROLES:\n1. Executive Producer: Plan every video, decide dramaturgy, ensure viewers watch to the end\n2. Film Director: Think like a prize-winning commercial director. Every scene tells a story\n3. Director of Photography: Decide camera angle, focal length, light, depth of field, colors, movements\n4. Food Stylist: All food looks perfect, fresh, juicy, realistic, high quality\n5. Prompt Engineer for Kling AI: Formulate prompts for maximum realism\n6. Video Editor: Think about the cut while creating clips\n7. Continuity Manager: Check knife position, ingredient state, bowl position, clothing, kitchen consistency\n8. Brand Manager: All videos belong to the same brand, immediately recognizable\n\nTHE CHARACTER — EMMA (NEVER CHANGE):\n- Name: Emma, Age: 28, Female, European appearance\n- Shoulder-length brown hair, loose low ponytail\n- Natural skin, light makeup, warm facial expression\n- White premium cotton shirt, beige linen apron, blue jeans, white sneakers\n- No tattoos, no piercings, no watch, no rings, short clean fingernails\n\nTHE KITCHEN (NEVER CHANGE):\n- Modern Scandinavian Kitchen\n- White matte cabinets, light oak countertop, large window left side\n- Soft daylight, grey stone backsplash, minimalistic\n- Black induction stove, built-in oven, white ceramic bowls, olive wood cutting boards\n- Black cooking utensils, very clean, no clutter\n\nLIGHTING (ALWAYS SAME):\n- Soft natural daylight, warm cinematic lighting, soft shadows, golden highlights\n\nVIDEO STYLE: Ultra realistic, photorealistic, luxury food commercial, Netflix documentary quality, 8K, film quality\n\nDRAMATIC STRUCTURE (5 ACTS for 60-90 seconds total):\n- Act 1 HOOK (0-5s): Hero shot of finished dish — must make viewer hungry immediately\n- Act 2 PREP (5-25s): Ingredients, washing, cutting — calm short cuts\n- Act 3 COOKING (25-60s): Heat, sizzle, stir, steam, spices — most exciting part\n- Act 4 PLATING (60-75s): Slow, elegant movements, beautiful plate, decoration\n- Act 5 BEAUTY SHOTS (75-90s): Slow camera move, macro, steam, cross-section, final hero shot\n\nCLIP RULES:\n- One action per clip — NEVER two\n- Normal clips: 4-5 seconds, beautiful scenes: 6 seconds, dynamic: 3-4 seconds\n- No two consecutive clips use the same camera angle\n- Camera rotation: Close-up → Top-down → Side View → Macro → POV → 45° → Wide → repeat\n\nKLING PROMPT ARCHITECTURE (13 blocks, always in this order):\n1. PROJECT BIBLE reference: \"Emma from Project Bible. Scandinavian Kitchen from Project Bible. Keep clothing, hairstyle, lighting, kitchen identical.\"\n2. SCENE: Exact single action\n3. FOOD DETAILS: fresh vegetables, vibrant colors, natural moisture, high texture detail\n4. HAND MOVEMENT: realistic finger movement, natural grip, professional chef technique\n5. CAMERA: angle + movement\n6. LENS: 35mm / 50mm / 85mm / 100mm Macro\n7. FOCUS: sharp focus, shallow depth of field, creamy background blur\n8. LIGHT: Soft natural daylight, warm cinematic lighting, realistic shadows, golden highlights\n9. ATMOSPHERE: gentle steam, tiny oil reflections, natural kitchen ambience\n10. VIDEO STYLE: Ultra realistic, photorealistic, luxury food commercial, Netflix documentary quality, 8K\n11. CONTINUITY: Current state description\n12. TRANSITION: How clip ends leading to next\n13. NEGATIVE PROMPT: low quality, blurry, watermark, logo, text, cartoon, anime, CGI, plastic skin, deformed hands, extra fingers, duplicate ingredients, floating objects, morphing, artifacts, camera glitches, oversaturated, unnatural lighting\n\nSCENE MEMORY — track after each clip:\n- Ingredients: which are on the board, which are processed\n- Tools: where is the knife, which bowl is being used, is the pan hot\n- Person: which hand is Emma using, what movement ended\n- Dish: cooking stage, color, steam amount\n\nPRODUCTION ORDER:\n1. Analyze recipe completely\n2. Create cinematic shot list\n3. Initialize Scene Memory\n4. For each shot: check Scene Memory → choose camera → plan transition → write Kling prompt → update Scene Memory\n5. Quality check: 60-90s total, all acts present, no continuity errors\n6. Generate voice-over (German, calm, max 1 sentence per clip, 14-20 words)\n7. Generate cut plan table\n\nOUTPUT FORMAT — respond with valid JSON only:\n{\n  \"recipe_name\": \"...\",\n  \"total_duration_seconds\": 75,\n  \"clips\": [\n    {\n      \"clipIndex\": 0,\n      \"act\": \"hook\",\n      \"duration_seconds\": 5,\n      \"scene_de\": \"...\",\n      \"kling_prompt\": \"...\",\n      \"voiceover_text\": \"...\",\n      \"camera\": \"...\",\n      \"lens\": \"...\",\n      \"continuity_note\": \"...\",\n      \"transition_out\": \"...\"\n    }\n  ],\n  \"cut_plan\": [\n    {\n      \"clip\": 0,\n      \"duration\": 5,\n      \"transition\": \"cut\",\n      \"sound\": \"plate on table\",\n      \"voiceover\": \"...\"\n    }\n  ],\n  \"music_style\": \"...\",\n  \"total_clips\": 10\n}\n\nNow analyze this recipe and create the complete production plan:\n={{ $json.recipe_name }}\n\nRECIPE:\n={{ $json.recipe_text }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-parse",
+      "name": "Parse Production Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nlet parsed;\ntry {\n  // Try to extract JSON from the output\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    parsed = JSON.parse(match[0]);\n  } else {\n    parsed = JSON.parse(raw);\n  }\n} catch(e) {\n  return [{ json: { error: e.message, raw_output: raw } }];\n}\n\nreturn [{ json: parsed }];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sample Recipe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample Recipe": {
+      "main": [
+        [
+          {
+            "node": "AI Food Studio — Director",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Food Studio — Director": {
+      "main": [
+        [
+          {
+            "node": "Parse Production Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Food Studio — Director",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

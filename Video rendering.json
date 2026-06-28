@@ -1,0 +1,588 @@
+{
+    "updatedAt": "2026-06-28T14:52:50.405Z",
+    "createdAt": "2026-02-21T13:37:33.227Z",
+    "id": "VeXgfkihC7JYQr26",
+    "name": "Video rendering",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+        {
+            "parameters": {
+                "inputSource": "passthrough"
+            },
+            "type": "n8n-nodes-base.executeWorkflowTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -784,
+                -112
+            ],
+            "id": "aab9caa6-b5f5-476a-9868-7d46d0523d6c",
+            "name": "When Executed by Another Workflow"
+        },
+        {
+            "parameters": {
+                "jsCode": "const clipItems = $('When Executed by Another Workflow').all();\n\nif (!clipItems.length) {\n  throw new Error('Keine Hauptclips im Input vorhanden.');\n}\n\nconst config = $('Intro/Outro').first().json;\nconst srtUrl = $('build srt file').first().json.srtUrl;\n\nconst INTRO_IMAGE_URL = config.intro_image_url ?? '';\nconst INTRO_AUDIO_URL = config.intro_audio_url ?? '';\nconst OUTRO_IMAGE_URL = config.outro_image_url ?? '';\nconst OUTRO_AUDIO_URL = config.outro_audio_url ?? '';\n\nconst INTRO_LENGTH = Number(config.intro_length ?? 2.2);\nconst OUTRO_LENGTH = Number(config.outro_length ?? 6.0);\n\nconst OUTPUT_WIDTH = Number(config.output_width ?? 1080);\nconst OUTPUT_HEIGHT = Number(config.output_height ?? 1920);\nconst OUTPUT_FORMAT = config.output_format ?? 'mp4';\n\nconst MAIN_CLIP_GAP = Number(config.main_clip_gap ?? 0);\nconst DURATION_BUFFER = Number(config.duration_buffer ?? 0.12);\n\nconst CAPTION_ENABLED =\n  String(config.captions_enabled ?? config.caption_enabled ?? 'true').toLowerCase() === 'true';\n\n// TikTok/Reels Style\nconst CAPTION_FONT_SIZE = Number(config.caption_font_size ?? 50);\nconst CAPTION_FONT_FAMILY = config.caption_font_family ?? 'Montserrat ExtraBold';\nconst CAPTION_TEXT_COLOR = config.caption_text_color ?? '#ffffff';\nconst CAPTION_LINE_HEIGHT = Number(config.caption_line_height ?? 0.9);\nconst CAPTION_STROKE_COLOR = config.caption_stroke_color ?? '#000000';\nconst CAPTION_STROKE_WIDTH = Number(config.caption_stroke_width ?? 2.9);\nconst CAPTION_OFFSET_Y = Number(config.caption_offset_y ?? 0.05);\n\nfunction round2(n) { return Number(Number(n).toFixed(2)); }\nfunction round3(n) { return Number(Number(n).toFixed(3)); }\n\nfunction buildTextMetrics(text = '') {\n  const t = String(text).trim();\n  const words = t.split(/\\s+/).filter(Boolean);\n  const normalizedWords = words.map(w => w.replace(/[^\\w-]/g, ''));\n  const wordCount = words.length;\n  const hasNumericContent = /[0-9$%\u20ac]/.test(t) || /\\b(million|billion|trillion|thousand)\\b/i.test(t) || /\\b(19|20)\\d{2}\\b/.test(t);\n  const acronymCount = words.filter(w => /\\b[A-Z]{2,}\\b/.test(w.replace(/[^\\w]/g, ''))).length;\n  const hyphenatedCount = words.filter(w => /-/.test(w)).length;\n  const longWords = normalizedWords.filter(w => w.length >= 10).length;\n  const veryLongWords = normalizedWords.filter(w => w.length >= 13).length;\n  const punctuationCount = (t.match(/[,:;\u2014-]/g) || []).length;\n  const isComplexPhrase = hyphenatedCount >= 1 && acronymCount >= 1 && longWords >= 2;\n  return { text: t, wordCount, hasNumericContent, acronymCount, hyphenatedCount, longWords, veryLongWords, punctuationCount, isComplexPhrase };\n}\n\nfunction calcDuration(text = '') {\n  const metrics = buildTextMetrics(text);\n  const base = metrics.wordCount / 2.35;\n  let extra = 0.6;\n  if (metrics.hasNumericContent) extra += 0.75;\n  if (metrics.acronymCount >= 1) extra += 0.25;\n  if (metrics.acronymCount >= 2) extra += 0.15;\n  if (metrics.hyphenatedCount >= 1) extra += 0.2;\n  if (metrics.hyphenatedCount >= 2) extra += 0.1;\n  if (metrics.longWords >= 2) extra += 0.2;\n  if (metrics.longWords >= 4) extra += 0.15;\n  if (metrics.veryLongWords >= 1) extra += 0.15;\n  if (metrics.veryLongWords >= 2) extra += 0.1;\n  if (metrics.punctuationCount >= 2) extra += 0.2;\n  if (metrics.punctuationCount >= 4) extra += 0.1;\n  if (metrics.wordCount >= 14) extra += 0.2;\n  if (metrics.wordCount >= 18) extra += 0.15;\n  if (metrics.isComplexPhrase) extra += 0.3;\n  return round3(Math.max(5.2, base + extra + 0.45));\n}\n\nconst sorted = [...clipItems].sort((a, b) =>\n  Number(a.json.clipIndex ?? 0) - Number(b.json.clipIndex ?? 0)\n);\n\nconst imageClips = [];\nconst audioClips = [];\nconst debugClips = [];\n\nlet currentStart = 0;\n\n// Intro\nif (INTRO_IMAGE_URL && INTRO_AUDIO_URL) {\n  imageClips.push({ start: round2(currentStart), length: round3(INTRO_LENGTH), asset: { type: 'image', src: INTRO_IMAGE_URL } });\n  audioClips.push({ start: round2(currentStart), length: round3(INTRO_LENGTH), asset: { type: 'audio', src: INTRO_AUDIO_URL } });\n  currentStart = round2(currentStart + INTRO_LENGTH);\n}\n\n// Hauptclips\nfor (const item of sorted) {\n  const j = item.json;\n  const clipIndex = Number(j.clipIndex ?? 0);\n  const imageUrl = j.image_url;\n  const audioUrl = j.audio_url;\n  const voiceoverText = j.voiceover_text ?? '';\n\n  if (!imageUrl) throw new Error(`image_url fehlt bei clipIndex ${clipIndex}`);\n  if (!audioUrl) throw new Error(`audio_url fehlt bei clipIndex ${clipIndex}`);\n\n  const metrics = buildTextMetrics(voiceoverText);\n  const rawDuration = j.duration;\n  const hasRealDuration = rawDuration != null && rawDuration !== '';\n  const duration = hasRealDuration\n    ? round3(Number(rawDuration) + DURATION_BUFFER)\n    : calcDuration(voiceoverText);\n  const start = round2(currentStart);\n  const length = round3(duration);\n\n  imageClips.push({ start, length, asset: { type: 'image', src: imageUrl } });\n  audioClips.push({ start, length, asset: { type: 'audio', src: audioUrl } });\n\n  debugClips.push({\n    clipIndex,\n    wordCount: metrics.wordCount,\n    hasNumericContent: metrics.hasNumericContent,\n    usedRealDuration: hasRealDuration,\n    sourceDuration: hasRealDuration ? round3(Number(rawDuration)) : null,\n    durationBuffer: hasRealDuration ? DURATION_BUFFER : null,\n    start,\n    length,\n    voiceover_text: voiceoverText,\n    audio_url: audioUrl,\n  });\n\n  currentStart = round2(currentStart + duration + MAIN_CLIP_GAP);\n}\n\nif (sorted.length > 0) {\n  currentStart = round2(currentStart - MAIN_CLIP_GAP);\n}\n\n// Outro\nif (OUTRO_IMAGE_URL && OUTRO_AUDIO_URL) {\n  imageClips.push({ start: round2(currentStart), length: round3(OUTRO_LENGTH), asset: { type: 'image', src: OUTRO_IMAGE_URL } });\n  audioClips.push({ start: round2(currentStart), length: round3(OUTRO_LENGTH), asset: { type: 'audio', src: OUTRO_AUDIO_URL } });\n  currentStart = round2(currentStart + OUTRO_LENGTH);\n}\n\nconst scriptId = sorted[0]?.json?.scriptId ?? null;\n\nconst tracks = [];\n\nif (CAPTION_ENABLED && srtUrl) {\n  tracks.push({\n    clips: [{\n      start: 0,\n      length: 'end',\n      position: 'bottom',\n      offset: { x: 0, y: CAPTION_OFFSET_Y },\n      asset: {\n        type: 'caption',\n        src: srtUrl,\n        font: {\n          family: CAPTION_FONT_FAMILY,\n          size: CAPTION_FONT_SIZE,\n          color: CAPTION_TEXT_COLOR,\n          lineHeight: CAPTION_LINE_HEIGHT,\n          stroke: CAPTION_STROKE_COLOR,\n          strokeWidth: CAPTION_STROKE_WIDTH,\n        },\n      },\n    }],\n  });\n}\n\ntracks.push({ clips: imageClips });\ntracks.push({ clips: audioClips });\n\nconst payload = {\n  timeline: { tracks },\n  output: {\n    format: OUTPUT_FORMAT,\n    size: { width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT },\n  },\n};\n\nreturn [{\n  json: {\n    scriptId,\n    payload,\n    debug: {\n      captionEnabled: CAPTION_ENABLED,\n      srtUrl: srtUrl ?? null,\n      introIncluded: Boolean(INTRO_IMAGE_URL && INTRO_AUDIO_URL),\n      outroIncluded: Boolean(OUTRO_IMAGE_URL && OUTRO_AUDIO_URL),\n      introLength: INTRO_LENGTH,\n      outroLength: OUTRO_LENGTH,\n      totalDuration: round2(currentStart),\n      clipCountMain: sorted.length,\n      clipCountImages: imageClips.length,\n      clipCountAudio: audioClips.length,\n      clips: debugClips,\n    },\n  },\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                624,
+                -112
+            ],
+            "id": "7f3638cc-f498-405f-9bf3-0ba14d46a7b9",
+            "name": "Build Shotstack Payload",
+            "executeOnce": false
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.shotstack.io/edit/v1/render",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-api-key",
+                            "value": "MuwO94XP6TApTW9RxVXvNcE13GQsVGP4t1KIIiAE"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ $json.payload }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                880,
+                -112
+            ],
+            "id": "6b777031-e7aa-4b6d-8dbf-0027d455a58a",
+            "name": "Shotstack Render"
+        },
+        {
+            "parameters": {
+                "amount": 30
+            },
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                1168,
+                -112
+            ],
+            "id": "dd5ecd2b-06b9-4848-a83f-1e9ad760aeaa",
+            "name": "Wait",
+            "webhookId": "4df5e5a5-7161-4de7-8012-200c9e7ca3a7"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "74f8158e-7e1b-4b1a-bdce-637db0b64084",
+                            "leftValue": "={{$json.response.status}}",
+                            "rightValue": "done",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals",
+                                "name": "filter.operator.equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {
+                    "ignoreCase": false
+                }
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                1936,
+                -112
+            ],
+            "id": "6d86dbaa-ce47-41cc-9c46-09c0dd9b94da",
+            "name": "If"
+        },
+        {
+            "parameters": {
+                "amount": 10
+            },
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                2144,
+                16
+            ],
+            "id": "b2b1de97-b4bb-401a-aef2-32ed2620f082",
+            "name": "Wait1",
+            "webhookId": "f320c5d3-695f-49bc-8a24-ea0de9c6315c"
+        },
+        {
+            "parameters": {
+                "name": "=crypto_news_{{$now.format(\"yyyy-MM-dd_HH-mm\")}}.mp4",
+                "driveId": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "My Drive"
+                },
+                "folderId": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "root",
+                    "cachedResultName": "/ (Root folder)"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.googleDrive",
+            "typeVersion": 3,
+            "position": [
+                2384,
+                -304
+            ],
+            "id": "ef3f31d1-c2ee-4d0f-8265-8b4c9493e77a",
+            "name": "Upload file",
+            "credentials": {
+                "googleDriveOAuth2Api": {
+                    "id": "O8jb8jRcoYKndHDa",
+                    "name": "Google Drive account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "sendVideo",
+                "chatId": "-1003735970138",
+                "binaryData": true,
+                "additionalFields": {}
+            },
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                2384,
+                -80
+            ],
+            "id": "9fdfebd4-3290-4f8d-9324-8bc199a95aa8",
+            "name": "Send a video",
+            "webhookId": "eae7ae05-446c-4aaf-847d-b0f1497cf9b0",
+            "credentials": {
+                "telegramApi": {
+                    "id": "XSt2NLTZQtZZSEYL",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "=https://api.shotstack.io/edit/v1/render/{{ $('Shotstack Render').item.json.response.id }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-api-key",
+                            "value": "MuwO94XP6TApTW9RxVXvNcE13GQsVGP4t1KIIiAE"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "json"
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                1504,
+                -112
+            ],
+            "id": "6a62dbe3-5bbc-464c-9fc5-ad39f1263dba",
+            "name": "Render status"
+        },
+        {
+            "parameters": {
+                "url": "={{$json.response.url}}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                2176,
+                -192
+            ],
+            "id": "941b8033-c70f-4935-8826-16cf471055a6",
+            "name": "Download video"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "49d68376-38d8-4e39-8f1b-27272a8c9db7",
+                            "name": "response.status",
+                            "value": "={{ $json.response.status }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "c440b2b7-5f40-484e-9832-ca19b4c280b3",
+                            "name": "response.url",
+                            "value": "={{ $json.response.url }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1712,
+                -112
+            ],
+            "id": "3d2376de-21a5-4df2-991b-9d988883b29f",
+            "name": "Edit Fields1"
+        },
+        {
+            "parameters": {
+                "operation": "upload",
+                "bucketName": "reels-voiceovers",
+                "fileName": "={{ $json.srtKey }}",
+                "additionalFields": {}
+            },
+            "type": "n8n-nodes-base.s3",
+            "typeVersion": 1,
+            "position": [
+                336,
+                -112
+            ],
+            "id": "98b314aa-5b7b-4006-b0fe-0bc77ab9844b",
+            "name": "Upload a file",
+            "credentials": {
+                "s3": {
+                    "id": "ARZEQMSLdWqjXadc",
+                    "name": "S3 account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const config = $input.first().json;\nconst clipItems = $('When Executed by Another Workflow').all();\n\nconst INTRO_IMAGE_URL = config.intro_image_url ?? '';\nconst INTRO_AUDIO_URL = config.intro_audio_url ?? '';\nconst INTRO_LENGTH = Number(config.intro_length ?? 2.2);\nconst INTRO_CAPTION = config.intro_caption ?? '';\n\nconst OUTRO_IMAGE_URL = config.outro_image_url ?? '';\nconst OUTRO_AUDIO_URL = config.outro_audio_url ?? '';\nconst OUTRO_LENGTH = Number(config.outro_length ?? 6.0);\nconst OUTRO_CAPTION = config.outro_caption ?? '';\n\nconst DURATION_BUFFER = Number(config.duration_buffer ?? 0.12);\nconst MAIN_CLIP_GAP = Number(config.main_clip_gap ?? 0.08);\nconst WORDS_PER_SEGMENT = 3;\n\nfunction toSrtTime(seconds) {\n  const h = Math.floor(seconds / 3600);\n  const m = Math.floor((seconds % 3600) / 60);\n  const s = Math.floor(seconds % 60);\n  const ms = Math.round((seconds % 1) * 1000);\n  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;\n}\n\nfunction addSegments(text, startTime, duration, wordsPerSegment, entryIndex, fullSrt) {\n  const words = String(text).trim().split(/\\s+/).filter(Boolean);\n  if (!words.length) return { entryIndex, fullSrt };\n  const segments = [];\n  for (let i = 0; i < words.length; i += wordsPerSegment) {\n    segments.push(words.slice(i, i + wordsPerSegment).join(' '));\n  }\n  const segDuration = duration / segments.length;\n  segments.forEach((seg, idx) => {\n    const start = startTime + idx * segDuration;\n    const end = start + segDuration - 0.05;\n    fullSrt += `${entryIndex}\\n${toSrtTime(start)} --> ${toSrtTime(end)}\\n${seg}\\n\\n`;\n    entryIndex++;\n  });\n  return { entryIndex, fullSrt };\n}\n\nconst sorted = [...clipItems].sort((a, b) =>\n  Number(a.json.clipIndex ?? 0) - Number(b.json.clipIndex ?? 0)\n);\n\nconst scriptId = sorted[0].json.scriptId;\n\nlet currentStart = 0;\nlet entryIndex = 1;\nlet fullSrt = '';\n\n// Intro\nconst hasIntro = Boolean(INTRO_IMAGE_URL && INTRO_AUDIO_URL);\nif (hasIntro && INTRO_CAPTION) {\n  ({ entryIndex, fullSrt } = addSegments(INTRO_CAPTION, 0, INTRO_LENGTH, WORDS_PER_SEGMENT, entryIndex, fullSrt));\n}\nif (hasIntro) {\n  currentStart = INTRO_LENGTH;\n}\n\n// Hauptclips\nfor (const item of sorted) {\n  const j = item.json;\n  const clipDuration = Number(j.duration) + DURATION_BUFFER;\n  ({ entryIndex, fullSrt } = addSegments(j.voiceover_text, currentStart, clipDuration, WORDS_PER_SEGMENT, entryIndex, fullSrt));\n  currentStart = currentStart + clipDuration + MAIN_CLIP_GAP;\n}\n\nif (sorted.length > 0) {\n  currentStart = currentStart - MAIN_CLIP_GAP;\n}\n\n// Outro\nconst hasOutro = Boolean(OUTRO_IMAGE_URL && OUTRO_AUDIO_URL);\nif (hasOutro && OUTRO_CAPTION) {\n  ({ entryIndex, fullSrt } = addSegments(OUTRO_CAPTION, currentStart, OUTRO_LENGTH, WORDS_PER_SEGMENT, entryIndex, fullSrt));\n}\n\nconst srtContent = fullSrt.trim();\nconst srtKey = `reels/${scriptId}/srt/full_transcript_${Date.now()}.srt`;\nconst srtUrl = `https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/${srtKey}`;\n\nconst binaryData = await this.helpers.prepareBinaryData(\n  Buffer.from(srtContent, 'utf-8'),\n  'full_transcript.srt',\n  'text/plain'\n);\n\nreturn [{\n  json: {\n    scriptId,\n    srtKey,\n    srtUrl,\n    // Debug \u2014 zeigt ob Intro/Outro in SRT enthalten sind\n    debug: {\n      introCaptionFound: Boolean(INTRO_CAPTION),\n      outroCaptionFound: Boolean(OUTRO_CAPTION),\n      introCaptionValue: INTRO_CAPTION,\n      outroCaptionValue: OUTRO_CAPTION,\n      srtContent,\n    }\n  },\n  binary: { data: binaryData },\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -176,
+                -112
+            ],
+            "id": "1c0ab374-bfc1-428f-80f5-91338a3ae236",
+            "name": "build srt file"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "b40cad32-39c8-4e58-b334-22ef1bb72a70",
+                            "name": "intro_audio_url",
+                            "value": "https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/reels/Intro/audio/intro_german_v2.mp3",
+                            "type": "string"
+                        },
+                        {
+                            "id": "150598a3-329a-4f6b-8d25-840ff6533b13",
+                            "name": "intro_image_url",
+                            "value": "https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/reels/Intro/image/Introbild.png",
+                            "type": "string"
+                        },
+                        {
+                            "id": "6415fbc6-c615-410b-ab14-d79c74dc1a70",
+                            "name": "intro_length",
+                            "value": "7.5",
+                            "type": "string"
+                        },
+                        {
+                            "id": "ff95e70c-bbde-4697-93fd-bace91446743",
+                            "name": "outro_audio_url",
+                            "value": "https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/reels/Outro/audio/outro_german.mp3",
+                            "type": "string"
+                        },
+                        {
+                            "id": "ed31f11d-0a51-492d-bc06-ac4267d753a5",
+                            "name": "outro_image_url",
+                            "value": "https://pub-b9cab7c4281d4ca4948989323fa68b5d.r2.dev/reels/Outro/image/Outrobild.png",
+                            "type": "string"
+                        },
+                        {
+                            "id": "fcde2781-0c40-4604-93af-e91c1757c6a5",
+                            "name": "outro_length",
+                            "value": "8.5",
+                            "type": "string"
+                        },
+                        {
+                            "id": "619461fe-caca-4388-9479-0bf5c66493e5",
+                            "name": "captions_enabled",
+                            "value": "true",
+                            "type": "string"
+                        },
+                        {
+                            "id": "ca122254-c310-4617-a63a-26952ee68845",
+                            "name": "intro_caption",
+                            "value": "Wenn du im Krypto Markt aktiv bist, solltest du DAS sehen - die wichtigsten Updates der letzten 24 Stunden.",
+                            "type": "string"
+                        },
+                        {
+                            "id": "486b92ad-a012-4da3-832a-245d52e56655",
+                            "name": "outro_caption",
+                            "value": "Was h\u00e4ltst du davon? Schreib\u2019s in die Kommentare und folge uns f\u00fcr t\u00e4gliche Markt Analysen. Wir sehen uns im n\u00e4chsten Briefing.",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -368,
+                -112
+            ],
+            "id": "685c598a-da97-4771-85b2-c7dff09442a6",
+            "name": "Intro/Outro"
+        },
+        {
+            "parameters": {
+                "chatId": "-1003735970138",
+                "text": "\ud83c\udfac Neues Video wird gerade gerendert...",
+                "additionalFields": {}
+            },
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                880,
+                -288
+            ],
+            "id": "e1fb890e-3216-41e2-a38b-7af7feee842b",
+            "name": "Send render information",
+            "webhookId": "1e2d0350-c915-4f7d-be49-0a36ee64b120",
+            "credentials": {
+                "telegramApi": {
+                    "id": "XSt2NLTZQtZZSEYL",
+                    "name": "Telegram account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "When Executed by Another Workflow": {
+            "main": [
+                [
+                    {
+                        "node": "Intro/Outro",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Shotstack Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Shotstack Render",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send render information",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Shotstack Render": {
+            "main": [
+                [
+                    {
+                        "node": "Wait",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If": {
+            "main": [
+                [
+                    {
+                        "node": "Download video",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Wait1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait1": {
+            "main": [
+                [
+                    {
+                        "node": "Render status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Render status": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download video": {
+            "main": [
+                [
+                    {
+                        "node": "Send a video",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Upload file",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields1": {
+            "main": [
+                [
+                    {
+                        "node": "If",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait": {
+            "main": [
+                [
+                    {
+                        "node": "Render status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Upload a file": {
+            "main": [
+                [
+                    {
+                        "node": "Build Shotstack Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "build srt file": {
+            "main": [
+                [
+                    {
+                        "node": "Upload a file",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Intro/Outro": {
+            "main": [
+                [
+                    {
+                        "node": "build srt file",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+        "templateCredsSetupCompleted": true
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "c45051b4-8dd5-4b11-8175-cbc6696f3d2a",
+    "activeVersionId": null,
+    "versionCounter": 543,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "shared": [
+        {
+            "updatedAt": "2026-03-16T20:06:22.248Z",
+            "createdAt": "2026-03-16T20:06:22.248Z",
+            "role": "workflow:owner",
+            "workflowId": "VeXgfkihC7JYQr26",
+            "projectId": "6ORlgmLXWvR008RF",
+            "project": {
+                "updatedAt": "2026-01-23T18:53:25.000Z",
+                "createdAt": "2026-01-23T18:50:27.846Z",
+                "id": "6ORlgmLXWvR008RF",
+                "name": "News",
+                "type": "team",
+                "icon": {
+                    "type": "icon",
+                    "value": "layers"
+                },
+                "description": "",
+                "customTelemetryTags": [],
+                "creatorId": null
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": null
+}
