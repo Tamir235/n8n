@@ -57,6 +57,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | `Cooking — Drehbuch Generator.json` | `9QSE0w8qgSWdlzSK` | **A2 ✅** — AI screenplay generator: recipe → full cinematic production plan (AI Food Studio v1.0, 8–12 clips, 60–90s) |
 | `Cooking — Voice and Image Generator.json` | `M6FzHQY3YG7zxjjC` | **A3 ✅** — Parallel audio (ElevenLabs) + image (OpenAI gpt-image-1 high) loops for all clips; merges by clipIndex |
 | `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. Real API key active. |
+| `Cooking — Video Renderer.json` | `YRKcfHEK5qcZ3wUO` | **A5 ✅** — Builds SRT (3 words/segment) → uploads to `cooking-reels` S3 → submits Shotstack render (video+audio tracks, captions) → polls until done → downloads → delivers in parallel: S3/R2, Telegram (sendVideo), Google Drive. Intro/Outro at 0s placeholder. |
 
 ### The `scriptId` — correlation key across all sub-workflows
 
@@ -165,7 +166,7 @@ A1  ✅ Recipe Intake (ID: B2BrjjbqFhUgeHZV)          GitHub #4
 A2  ✅ Drehbuch Generator  ID: 9QSE0w8qgSWdlzSK       GitHub #5
 A3  ✅ Cooking Voice + Image Generator (ID: M6FzHQY3YG7zxjjC)  GitHub #6
 A4  ✅ Kling AI Animator (ID: yndJdfRoRIJbvTLC)        GitHub #7
-A5  🔄 Cooking Video Renderer (Shotstack assembly)    GitHub #8  ← building now
+A5  ✅ Cooking Video Renderer (ID: YRKcfHEK5qcZ3wUO)   GitHub #8
 A6  ⏳ Cooking Master Orchestrator + Social Delivery  GitHub #9  ← needs A5
 ```
 
@@ -210,3 +211,4 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | 2026-06-28 | A3 Cooking — Voice and Image Generator deployed (ID: M6FzHQY3YG7zxjjC) — 24-node workflow: parallel audio (ElevenLabs TTS + S3) and image (gpt-image-1 high quality + S3) loops, both starting from Prepare Clips, merged by clipIndex; JSON saved to desktop |
 | 2026-06-28 | A4 Cooking — Kling AI Animator deployed (ID: yndJdfRoRIJbvTLC) — 14-node workflow; real Kling API key inserted via n8n API (both HTTP nodes updated). JSON saved to desktop |
 | 2026-06-28 | A5 Cooking — Video Renderer building now — 17-node workflow: SRT generation → Shotstack (video+audio tracks) → poll → download → parallel delivery: Telegram + Google Drive + S3/R2 bucket (cooking/{scriptId}/final/). Intro/Outro as configurable Set node, currently 0s placeholders |
+| 2026-06-28 | A5 Cooking — Video Renderer deployed (ID: YRKcfHEK5qcZ3wUO) — 17-node workflow confirmed via GET. Fixed bucket from `reels-voiceovers` → `cooking-reels` and CDN URL to cooking-reels R2 endpoint. SRT uploaded to `cooking-reels`, final video delivered to S3 + Telegram (sendVideo) + Google Drive in parallel. |

@@ -1,0 +1,638 @@
+{
+  "name": "Cooking — Video Renderer",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-784, 0],
+      "id": "node-trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-intro-video",
+              "name": "intro_video_url",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "assign-intro-audio",
+              "name": "intro_audio_url",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "assign-intro-length",
+              "name": "intro_length",
+              "value": "0",
+              "type": "string"
+            },
+            {
+              "id": "assign-outro-video",
+              "name": "outro_video_url",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "assign-outro-audio",
+              "name": "outro_audio_url",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "assign-outro-length",
+              "name": "outro_length",
+              "value": "0",
+              "type": "string"
+            },
+            {
+              "id": "assign-captions-enabled",
+              "name": "captions_enabled",
+              "value": "true",
+              "type": "string"
+            },
+            {
+              "id": "assign-caption-font-size",
+              "name": "caption_font_size",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "assign-caption-font-family",
+              "name": "caption_font_family",
+              "value": "Montserrat ExtraBold",
+              "type": "string"
+            },
+            {
+              "id": "assign-caption-text-color",
+              "name": "caption_text_color",
+              "value": "#ffffff",
+              "type": "string"
+            },
+            {
+              "id": "assign-caption-stroke-color",
+              "name": "caption_stroke_color",
+              "value": "#000000",
+              "type": "string"
+            },
+            {
+              "id": "assign-caption-stroke-width",
+              "name": "caption_stroke_width",
+              "value": 2.9,
+              "type": "number"
+            },
+            {
+              "id": "assign-caption-offset-y",
+              "name": "caption_offset_y",
+              "value": 0.05,
+              "type": "number"
+            },
+            {
+              "id": "assign-output-width",
+              "name": "output_width",
+              "value": 1080,
+              "type": "number"
+            },
+            {
+              "id": "assign-output-height",
+              "name": "output_height",
+              "value": 1920,
+              "type": "number"
+            },
+            {
+              "id": "assign-duration-buffer",
+              "name": "duration_buffer",
+              "value": 0.12,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-504, 0],
+      "id": "node-intro-outro-config",
+      "name": "Intro/Outro Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const clipItems = $('When Executed by Another Workflow').all();\nconst DURATION_BUFFER = 0.12;\nconst WORDS_PER_SEGMENT = 3;\n\nfunction toSrtTime(seconds) {\n  const h = Math.floor(seconds / 3600);\n  const m = Math.floor((seconds % 3600) / 60);\n  const s = Math.floor(seconds % 60);\n  const ms = Math.round((seconds % 1) * 1000);\n  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;\n}\n\nconst sorted = [...clipItems].sort((a,b) => Number(a.json.clipIndex??0) - Number(b.json.clipIndex??0));\nconst scriptId = sorted[0].json.scriptId;\nconst recipeName = sorted[0].json.recipe_name ?? 'cooking';\n\nlet currentStart = 0, entryIndex = 1, fullSrt = '';\n\nfor (const item of sorted) {\n  const j = item.json;\n  const clipDuration = Number(j.duration) + DURATION_BUFFER;\n  const words = String(j.voiceover_text ?? '').trim().split(/\\s+/).filter(Boolean);\n  if (!words.length) { currentStart += clipDuration; continue; }\n  const segments = [];\n  for (let i = 0; i < words.length; i += WORDS_PER_SEGMENT) segments.push(words.slice(i, i+WORDS_PER_SEGMENT).join(' '));\n  const segDur = clipDuration / segments.length;\n  segments.forEach((seg, idx) => {\n    const start = currentStart + idx * segDur;\n    const end = start + segDur - 0.05;\n    fullSrt += `${entryIndex}\\n${toSrtTime(start)} --> ${toSrtTime(end)}\\n${seg}\\n\\n`;\n    entryIndex++;\n  });\n  currentStart += clipDuration;\n}\n\nconst srtContent = fullSrt.trim();\nconst srtKey = `cooking/${scriptId}/srt/full_transcript_${Date.now()}.srt`;\nconst srtUrl = `https://pub-37b9b6ddb72f4f18afbe8af4657ccaf4.r2.dev/${srtKey}`;\n\nconst binaryData = await this.helpers.prepareBinaryData(Buffer.from(srtContent,'utf-8'),'full_transcript.srt','text/plain');\nreturn [{ json: { scriptId, recipeName, srtKey, srtUrl }, binary: { data: binaryData } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-224, 0],
+      "id": "node-build-srt",
+      "name": "Build SRT File"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "cooking-reels",
+        "fileName": "={{ $json.srtKey }}",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 2.1,
+      "position": [56, 0],
+      "id": "node-upload-srt",
+      "name": "Upload SRT",
+      "credentials": {
+        "s3": {
+          "id": "ARZEQMSLdWqjXadc",
+          "name": "S3 account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const clipItems = $('When Executed by Another Workflow').all();\nconst config = $('Intro/Outro Config').first().json;\nconst srtUrl = $('Build SRT File').first().json.srtUrl;\nconst scriptId = $('Build SRT File').first().json.scriptId;\nconst recipeName = $('Build SRT File').first().json.recipeName;\n\nconst INTRO_VIDEO = config.intro_video_url ?? '';\nconst INTRO_AUDIO = config.intro_audio_url ?? '';\nconst OUTRO_VIDEO = config.outro_video_url ?? '';\nconst OUTRO_AUDIO = config.outro_audio_url ?? '';\nconst INTRO_LEN = Number(config.intro_length ?? 0);\nconst OUTRO_LEN = Number(config.outro_length ?? 0);\nconst DURATION_BUFFER = Number(config.duration_buffer ?? 0.12);\nconst CAPTION_ENABLED = String(config.captions_enabled ?? 'true').toLowerCase() === 'true';\n\nfunction r2(n){ return Number(Number(n).toFixed(2)); }\nfunction r3(n){ return Number(Number(n).toFixed(3)); }\n\nconst sorted = [...clipItems].sort((a,b) => Number(a.json.clipIndex??0) - Number(b.json.clipIndex??0));\nconst videoClips = [], audioClips = [];\nlet t = 0;\n\nif (INTRO_VIDEO && INTRO_AUDIO && INTRO_LEN > 0) {\n  videoClips.push({ start: r2(t), length: r3(INTRO_LEN), asset: { type: 'video', src: INTRO_VIDEO, volume: 0 } });\n  audioClips.push({ start: r2(t), length: r3(INTRO_LEN), asset: { type: 'audio', src: INTRO_AUDIO } });\n  t = r2(t + INTRO_LEN);\n}\n\nfor (const item of sorted) {\n  const j = item.json;\n  if (!j.video_url) throw new Error(`video_url missing at clipIndex ${j.clipIndex}`);\n  if (!j.audio_url) throw new Error(`audio_url missing at clipIndex ${j.clipIndex}`);\n  const len = r3(Number(j.duration) + DURATION_BUFFER);\n  videoClips.push({ start: r2(t), length: len, asset: { type: 'video', src: j.video_url, volume: 0 } });\n  audioClips.push({ start: r2(t), length: len, asset: { type: 'audio', src: j.audio_url } });\n  t = r2(t + Number(j.duration) + DURATION_BUFFER);\n}\n\nif (OUTRO_VIDEO && OUTRO_AUDIO && OUTRO_LEN > 0) {\n  videoClips.push({ start: r2(t), length: r3(OUTRO_LEN), asset: { type: 'video', src: OUTRO_VIDEO, volume: 0 } });\n  audioClips.push({ start: r2(t), length: r3(OUTRO_LEN), asset: { type: 'audio', src: OUTRO_AUDIO } });\n  t = r2(t + OUTRO_LEN);\n}\n\nconst tracks = [];\nif (CAPTION_ENABLED && srtUrl) {\n  tracks.push({ clips: [{ start: 0, length: 'end', position: 'bottom',\n    offset: { x: 0, y: Number(config.caption_offset_y ?? 0.05) },\n    asset: { type: 'caption', src: srtUrl,\n      font: { family: config.caption_font_family ?? 'Montserrat ExtraBold',\n        size: Number(config.caption_font_size ?? 50),\n        color: config.caption_text_color ?? '#ffffff',\n        lineHeight: 0.9,\n        stroke: config.caption_stroke_color ?? '#000000',\n        strokeWidth: Number(config.caption_stroke_width ?? 2.9) } } }] });\n}\ntracks.push({ clips: videoClips });\ntracks.push({ clips: audioClips });\n\nconst today = new Date().toISOString().slice(0,10);\nconst safeRecipe = (recipeName ?? 'cooking').replace(/[^a-z0-9]+/gi,'_').toLowerCase();\nconst finalVideoKey = `cooking/${scriptId}/final/${safeRecipe}_${today}.mp4`;\n\nreturn [{ json: {\n  scriptId, recipeName, finalVideoKey, totalDuration: r2(t),\n  payload: { timeline: { tracks }, output: { format: 'mp4', size: { width: Number(config.output_width??1080), height: Number(config.output_height??1920) } } }\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [336, 0],
+      "id": "node-build-shotstack-payload",
+      "name": "Build Shotstack Payload"
+    },
+    {
+      "parameters": {
+        "chatId": "-1003735970138",
+        "text": "=🎬 Kochvideo wird gerendert: {{ $json.recipeName }} ({{ $json.totalDuration }}s)",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [616, -200],
+      "id": "node-send-render-notification",
+      "name": "Send Render Notification",
+      "credentials": {
+        "telegramApi": {
+          "id": "XSt2NLTZQtZZSEYL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/v1/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "MuwO94XP6TApTW9RxVXvNcE13GQsVGP4t1KIIiAE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [616, 0],
+      "id": "node-shotstack-render",
+      "name": "Shotstack Render"
+    },
+    {
+      "parameters": {
+        "amount": 45
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [896, 0],
+      "id": "node-wait-45",
+      "name": "Wait 45s",
+      "webhookId": "cook-wait-45s-webhook-id-001"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/edit/v1/render/{{ $('Shotstack Render').item.json.response.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "MuwO94XP6TApTW9RxVXvNcE13GQsVGP4t1KIIiAE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1176, 0],
+      "id": "node-render-status",
+      "name": "Render Status"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-status",
+              "name": "response.status",
+              "value": "={{ $json.response.status }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-url",
+              "name": "response.url",
+              "value": "={{ $json.response.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1456, 0],
+      "id": "node-extract-render-status",
+      "name": "Extract Render Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cond-done",
+              "leftValue": "={{ $json['response.status'] }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1736, 0],
+      "id": "node-render-done",
+      "name": "Render Done?"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1736, 200],
+      "id": "node-wait-15",
+      "name": "Wait 15s",
+      "webhookId": "cook-wait-15s-webhook-id-002"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json['response.url'] }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [2016, 0],
+      "id": "node-download-video",
+      "name": "Download Video"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "cooking-reels",
+        "fileName": "={{ $('Build Shotstack Payload').item.json.finalVideoKey }}",
+        "binaryPropertyName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 2.1,
+      "position": [2296, -200],
+      "id": "node-upload-final-s3",
+      "name": "Upload Final to S3",
+      "credentials": {
+        "s3": {
+          "id": "ARZEQMSLdWqjXadc",
+          "name": "S3 account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "-1003735970138",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2296, 0],
+      "id": "node-send-video-telegram",
+      "name": "Send Video to Telegram",
+      "credentials": {
+        "telegramApi": {
+          "id": "XSt2NLTZQtZZSEYL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "=cooking_{{ $('Build Shotstack Payload').item.json.recipeName }}_{{ $now.format('yyyy-MM-dd') }}.mp4",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [2296, 200],
+      "id": "node-upload-google-drive",
+      "name": "Upload to Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "O8jb8jRcoYKndHDa",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-final-scriptid",
+              "name": "scriptId",
+              "value": "={{ $('Build Shotstack Payload').item.json.scriptId }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-final-recipename",
+              "name": "recipeName",
+              "value": "={{ $('Build Shotstack Payload').item.json.recipeName }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-final-s3url",
+              "name": "s3_url",
+              "value": "=https://pub-37b9b6ddb72f4f18afbe8af4657ccaf4.r2.dev/{{ $('Build Shotstack Payload').item.json.finalVideoKey }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-final-duration",
+              "name": "totalDuration",
+              "value": "={{ $('Build Shotstack Payload').item.json.totalDuration }}",
+              "type": "number"
+            },
+            {
+              "id": "assign-final-status",
+              "name": "status",
+              "value": "done",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2576, 0],
+      "id": "node-build-final-output",
+      "name": "Build Final Output"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Intro/Outro Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intro/Outro Config": {
+      "main": [
+        [
+          {
+            "node": "Build SRT File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SRT File": {
+      "main": [
+        [
+          {
+            "node": "Upload SRT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload SRT": {
+      "main": [
+        [
+          {
+            "node": "Build Shotstack Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Shotstack Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Render Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Shotstack Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shotstack Render": {
+      "main": [
+        [
+          {
+            "node": "Wait 45s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 45s": {
+      "main": [
+        [
+          {
+            "node": "Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Status": {
+      "main": [
+        [
+          {
+            "node": "Extract Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Render Status": {
+      "main": [
+        [
+          {
+            "node": "Render Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Done?": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s": {
+      "main": [
+        [
+          {
+            "node": "Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Upload Final to S3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Video to Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Final to S3": {
+      "main": [
+        [
+          {
+            "node": "Build Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Video to Telegram": {
+      "main": [
+        [
+          {
+            "node": "Build Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Build Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YRKcfHEK5qcZ3wUO"
+  },
+  "pinData": {}
+}
