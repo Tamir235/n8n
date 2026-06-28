@@ -58,6 +58,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | `Cooking — Voice and Image Generator.json` | `M6FzHQY3YG7zxjjC` | **A3 ✅** — Parallel audio (ElevenLabs) + image (OpenAI gpt-image-1 high) loops for all clips; merges by clipIndex |
 | `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. Real API key active. |
 | `Cooking — Video Renderer.json` | `YRKcfHEK5qcZ3wUO` | **A5 ✅** — Builds SRT (3 words/segment) → uploads to `cooking-reels` S3 → submits Shotstack render (video+audio tracks, captions) → polls until done → downloads → delivers in parallel: S3/R2, Telegram (sendVideo), Google Drive. Intro/Outro at 0s placeholder. |
+| `Cooking — Master.json` | `ZbRaldRsY68GmpgJ` | **A6 ✅** — Top-level orchestrator: Webhook trigger (POST /cooking-master) → parse input → Telegram confirm → calls A1→A2→A3→A4→A5 in sequence → sends Instagram + TikTok + YouTube Shorts captions in parallel → Pipeline Complete notification. |
 
 ### The `scriptId` — correlation key across all sub-workflows
 
@@ -167,7 +168,7 @@ A2  ✅ Drehbuch Generator  ID: 9QSE0w8qgSWdlzSK       GitHub #5
 A3  ✅ Cooking Voice + Image Generator (ID: M6FzHQY3YG7zxjjC)  GitHub #6
 A4  ✅ Kling AI Animator (ID: yndJdfRoRIJbvTLC)        GitHub #7
 A5  ✅ Cooking Video Renderer (ID: YRKcfHEK5qcZ3wUO)   GitHub #8
-A6  ⏳ Cooking Master Orchestrator + Social Delivery  GitHub #9  ← needs A5
+A6  ✅ Cooking Master Orchestrator (ID: ZbRaldRsY68GmpgJ)  GitHub #9
 ```
 
 ## Key Implementation Details
@@ -199,6 +200,7 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | Issue | Detail |
 |---|---|
 | **B3** | Parallelize two sequential `SplitInBatches` loops in Voice and Image Generator — split before, merge after by `clipIndex` |
+| **A1** | `SPOONACULAR_API_KEY_PLACEHOLDER` no longer needed — branch replaced with OpenAI AI generation. Resolved. |
 | **A5 Intro/Outro** | `intro_length` and `outro_length` set to 0 in `Intro/Outro Config` node — upload real cooking intro/outro video+audio assets to S3 and update URLs |
 
 ## Session Log
@@ -212,3 +214,4 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | 2026-06-28 | A5 Cooking — Video Renderer building now — 17-node workflow: SRT generation → Shotstack (video+audio tracks) → poll → download → parallel delivery: Telegram + Google Drive + S3/R2 bucket (cooking/{scriptId}/final/). Intro/Outro as configurable Set node, currently 0s placeholders |
 | 2026-06-28 | A5 Cooking — Video Renderer deployed (ID: YRKcfHEK5qcZ3wUO) — 17-node workflow confirmed via GET. Fixed bucket from `reels-voiceovers` → `cooking-reels` and CDN URL to cooking-reels R2 endpoint. SRT uploaded to `cooking-reels`, final video delivered to S3 + Telegram (sendVideo) + Google Drive in parallel. |
 | 2026-06-28 | A1 Recipe Intake updated (ID: B2BrjjbqFhUgeHZV, versionCounter→2) — Replaced broken Spoonacular branch (3 nodes: Spoonacular Search + Get Details + Normalize) with OpenAI-based generation: `Generate Recipe with AI` (LangChain agent, gpt-4.1-mini, German ingredients/steps) + `OpenAI for Recipe` (lmChatOpenAi sub-node, credential v5ycd3YeDhUfrhQ2) + `Parse AI Recipe` (Code node). URL scrape branch unchanged. |
+| 2026-06-28 | A6 Cooking — Master deployed (ID: ZbRaldRsY68GmpgJ) — 14-node orchestrator: Webhook (POST /cooking-master) → Parse Input (JS, generates scriptId) → Telegram Confirm → A1→A2→A3→A4→A5 sequential chain → Extract Recipe Name → parallel Instagram + TikTok + YouTube Shorts captions + Pipeline Complete notification. Also fixed A4 Upload Video to S3 node (was empty params — added bucketName: cooking-reels, fileKey from videoKey expression). All sub-workflows activated. JSON saved to desktop. Webhook live at https://n8nconsutinginternational.app.n8n.cloud/webhook/cooking-master |
