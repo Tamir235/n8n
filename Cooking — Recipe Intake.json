@@ -1,10 +1,10 @@
 {
-    "updatedAt": "2026-06-28T14:51:24.909Z",
+    "updatedAt": "2026-06-28T15:53:41.089Z",
     "createdAt": "2026-06-28T14:51:24.909Z",
     "id": "B2BrjjbqFhUgeHZV",
-    "name": "Cooking \u2014 Recipe Intake",
+    "name": "Cooking — Recipe Intake",
     "description": null,
-    "active": false,
+    "active": true,
     "isArchived": false,
     "nodes": [
         {
@@ -123,37 +123,6 @@
             }
         },
         {
-            "id": "node-spoonacular-search",
-            "name": "Spoonacular Search",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2,
-            "position": [
-                900,
-                500
-            ],
-            "parameters": {
-                "method": "GET",
-                "url": "https://api.spoonacular.com/recipes/complexSearch",
-                "sendQuery": true,
-                "queryParameters": {
-                    "parameters": [
-                        {
-                            "name": "query",
-                            "value": "={{ $json.inputValue }}"
-                        },
-                        {
-                            "name": "number",
-                            "value": "1"
-                        },
-                        {
-                            "name": "apiKey",
-                            "value": "SPOONACULAR_API_KEY_PLACEHOLDER"
-                        }
-                    ]
-                }
-            }
-        },
-        {
             "id": "node-openai-lm",
             "name": "OpenAI Chat Model",
             "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
@@ -188,35 +157,42 @@
             }
         },
         {
-            "id": "node-spoonacular-details",
-            "name": "Spoonacular Get Details",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2,
+            "id": "node-generate-recipe-ai",
+            "name": "Generate Recipe with AI",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
             "position": [
                 1200,
                 500
             ],
             "parameters": {
-                "method": "GET",
-                "url": "=https://api.spoonacular.com/recipes/{{ $json.results[0].id }}/information",
-                "sendQuery": true,
-                "queryParameters": {
-                    "parameters": [
-                        {
-                            "name": "apiKey",
-                            "value": "SPOONACULAR_API_KEY_PLACEHOLDER"
-                        },
-                        {
-                            "name": "includeNutrition",
-                            "value": "false"
-                        }
-                    ]
+                "promptType": "define",
+                "text": "=You are a professional chef and recipe writer. Generate a detailed, authentic recipe for the following dish.\n\nDish name: ={{ $('Route Input').item.json.inputValue }}\n\nReturn ONLY valid JSON in this exact format, no markdown, no explanation:\n{\n  \"name\": \"exact dish name\",\n  \"servings\": 2,\n  \"prepTime\": \"X min\",\n  \"cookTime\": \"X min\",\n  \"ingredients\": [\n    \"200g ingredient 1\",\n    \"2 tbsp ingredient 2\"\n  ],\n  \"steps\": [\n    \"Step 1 description\",\n    \"Step 2 description\"\n  ]\n}\n\nRequirements:\n- Ingredients in German with exact quantities\n- Steps in German, clear and detailed\n- 6-12 ingredients\n- 5-10 steps\n- Authentic recipe, not simplified"
+            }
+        },
+        {
+            "id": "node-openai-lm-recipe",
+            "name": "OpenAI for Recipe",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.3,
+            "position": [
+                1000,
+                650
+            ],
+            "parameters": {
+                "model": "gpt-4.1-mini",
+                "options": {}
+            },
+            "credentials": {
+                "openAiApi": {
+                    "id": "v5ycd3YeDhUfrhQ2",
+                    "name": "OpenAi account"
                 }
             }
         },
         {
-            "id": "node-normalize-spoonacular",
-            "name": "Normalize Spoonacular Recipe",
+            "id": "node-parse-ai-recipe",
+            "name": "Parse AI Recipe",
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
             "position": [
@@ -224,7 +200,7 @@
                 500
             ],
             "parameters": {
-                "jsCode": "const d = $input.first().json;\nconst ingredients = (d.extendedIngredients || []).map(i => i.original);\nconst steps = [];\n(d.analyzedInstructions || []).forEach(block => {\n  (block.steps || []).forEach(s => steps.push(s.step));\n});\nreturn [{ json: {\n  name: d.title || 'Unknown',\n  servings: d.servings || 2,\n  prepTime: `${d.preparationMinutes || 0} min`,\n  cookTime: `${d.cookingMinutes || d.readyInMinutes || 0} min`,\n  ingredients,\n  steps\n}}];"
+                "jsCode": "const raw = $input.first().json.output ?? '';\nlet recipe;\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  recipe = JSON.parse(match ? match[0] : raw);\n} catch(e) {\n  throw new Error(`Recipe parsing failed: ${e.message}. Raw: ${raw.slice(0,200)}`);\n}\nreturn [{ json: {\n  name: recipe.name ?? 'Unknown',\n  servings: recipe.servings ?? 2,\n  prepTime: recipe.prepTime ?? '15 min',\n  cookTime: recipe.cookTime ?? '30 min',\n  ingredients: recipe.ingredients ?? [],\n  steps: recipe.steps ?? []\n}}];"
             }
         },
         {
@@ -337,7 +313,7 @@
                 ],
                 [
                     {
-                        "node": "Spoonacular Search",
+                        "node": "Generate Recipe with AI",
                         "type": "main",
                         "index": 0
                     }
@@ -349,17 +325,6 @@
                 [
                     {
                         "node": "Parse Recipe from HTML",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Spoonacular Search": {
-            "main": [
-                [
-                    {
-                        "node": "Spoonacular Get Details",
                         "type": "main",
                         "index": 0
                     }
@@ -388,18 +353,29 @@
                 ]
             ]
         },
-        "Spoonacular Get Details": {
+        "OpenAI for Recipe": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Generate Recipe with AI",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Recipe with AI": {
             "main": [
                 [
                     {
-                        "node": "Normalize Spoonacular Recipe",
+                        "node": "Parse AI Recipe",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Normalize Spoonacular Recipe": {
+        "Parse AI Recipe": {
             "main": [
                 [
                     {
@@ -429,9 +405,9 @@
     "meta": null,
     "nodeGroups": [],
     "pinData": null,
-    "versionId": "dfbda296-f65f-4dba-b145-e323d5a66398",
-    "activeVersionId": null,
-    "versionCounter": 1,
+    "versionId": "28464c25-f644-4aab-b3e4-56caaa9f4a96",
+    "activeVersionId": "28464c25-f644-4aab-b3e4-56caaa9f4a96",
+    "versionCounter": 2,
     "triggerCount": 0,
     "sourceWorkflowId": null,
     "shared": [
@@ -454,6 +430,5 @@
             }
         }
     ],
-    "tags": [],
-    "activeVersion": null
+    "tags": []
 }

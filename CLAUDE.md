@@ -53,7 +53,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | File | n8n ID | Role |
 |---|---|---|
 | `Cooking — AI Food Studio Test.json` | `Qzd8tZyFb4rVPOyu` | Test/PoC — AI Director agent (GPT-4.1) converts recipe → cinematic production plan with Kling AI prompts |
-| `Cooking — Recipe Intake.json` | `B2BrjjbqFhUgeHZV` | **A1 ✅** — Dual-mode: Telegram URL scrape or Spoonacular API → normalized recipe + `scriptId` |
+| `Cooking — Recipe Intake.json` | `B2BrjjbqFhUgeHZV` | **A1 ✅** — Dual-mode: URL scrape (HTML → LangChain agent) or dish name → OpenAI gpt-4.1-mini recipe generation → normalized recipe + `scriptId` |
 | `Cooking — Drehbuch Generator.json` | `9QSE0w8qgSWdlzSK` | **A2 ✅** — AI screenplay generator: recipe → full cinematic production plan (AI Food Studio v1.0, 8–12 clips, 60–90s) |
 | `Cooking — Voice and Image Generator.json` | `M6FzHQY3YG7zxjjC` | **A3 ✅** — Parallel audio (ElevenLabs) + image (OpenAI gpt-image-1 high) loops for all clips; merges by clipIndex |
 | `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. Real API key active. |
@@ -199,7 +199,6 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | Issue | Detail |
 |---|---|
 | **B3** | Parallelize two sequential `SplitInBatches` loops in Voice and Image Generator — split before, merge after by `clipIndex` |
-| **A1** | `SPOONACULAR_API_KEY_PLACEHOLDER` in Recipe Intake — replace with real credential before production |
 | **A5 Intro/Outro** | `intro_length` and `outro_length` set to 0 in `Intro/Outro Config` node — upload real cooking intro/outro video+audio assets to S3 and update URLs |
 
 ## Session Log
@@ -212,3 +211,4 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | 2026-06-28 | A4 Cooking — Kling AI Animator deployed (ID: yndJdfRoRIJbvTLC) — 14-node workflow; real Kling API key inserted via n8n API (both HTTP nodes updated). JSON saved to desktop |
 | 2026-06-28 | A5 Cooking — Video Renderer building now — 17-node workflow: SRT generation → Shotstack (video+audio tracks) → poll → download → parallel delivery: Telegram + Google Drive + S3/R2 bucket (cooking/{scriptId}/final/). Intro/Outro as configurable Set node, currently 0s placeholders |
 | 2026-06-28 | A5 Cooking — Video Renderer deployed (ID: YRKcfHEK5qcZ3wUO) — 17-node workflow confirmed via GET. Fixed bucket from `reels-voiceovers` → `cooking-reels` and CDN URL to cooking-reels R2 endpoint. SRT uploaded to `cooking-reels`, final video delivered to S3 + Telegram (sendVideo) + Google Drive in parallel. |
+| 2026-06-28 | A1 Recipe Intake updated (ID: B2BrjjbqFhUgeHZV, versionCounter→2) — Replaced broken Spoonacular branch (3 nodes: Spoonacular Search + Get Details + Normalize) with OpenAI-based generation: `Generate Recipe with AI` (LangChain agent, gpt-4.1-mini, German ingredients/steps) + `OpenAI for Recipe` (lmChatOpenAi sub-node, credential v5ycd3YeDhUfrhQ2) + `Parse AI Recipe` (Code node). URL scrape branch unchanged. |
