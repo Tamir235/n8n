@@ -59,6 +59,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. Real API key active. |
 | `Cooking — Video Renderer.json` | `YRKcfHEK5qcZ3wUO` | **A5 ✅** — Builds SRT (3 words/segment) → uploads to `cooking-reels` S3 → submits Shotstack render (video+audio tracks, captions) → polls until done → downloads → delivers in parallel: S3/R2, Telegram (sendVideo), Google Drive. Intro/Outro at 0s placeholder. |
 | `Cooking — Master.json` | `ZbRaldRsY68GmpgJ` | **A6 ✅** — Top-level orchestrator: Webhook trigger (POST /cooking-master) → parse input → Telegram confirm → calls A1→A2→A3→A4→A5 in sequence → sends Instagram + TikTok + YouTube Shorts captions in parallel → Pipeline Complete notification. |
+| `Cooking — Error Logger.json` | `bCRPcgcAvzFMvf7j` | **Error Logger ✅** — Centralised error handler: fires via n8n Error Trigger whenever any cooking workflow fails → formats Berlin-time message with workflow name, short error, scriptId, and execution URL → sends to Telegram chat `-1003735970138`. All 6 cooking workflows (A1–A6) route their errors here. |
 
 ### The `scriptId` — correlation key across all sub-workflows
 
@@ -195,6 +196,28 @@ intro_length: 0s  |  outro_length: 0s  (placeholders — set to 0 until real ass
 ```
 When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, then update the Set node with URLs and lengths. Shotstack uses `type: "video"` with `volume: 0` for video track + separate audio track (same pattern as main clips).
 
+## Error Handling
+
+All 6 cooking workflows (A1–A6) are configured with `settings.errorWorkflow = "bCRPcgcAvzFMvf7j"` (Cooking — Error Logger). When any of them fails, n8n automatically triggers the Error Logger, which:
+
+1. Reads `$json.workflow.name`, `$json.execution.url`, `$json.error.message`, and `$json.error.stack` from the trigger payload.
+2. Tries to extract a `cooking_*` scriptId from the error text (regex `/cooking_[\w\-]+/`).
+3. Formats a German Telegram message with Berlin timestamp (Europe/Berlin timezone via `Intl.DateTimeFormat`).
+4. Sends the message to Telegram chat `-1003735970138` using credential `XSt2NLTZQtZZSEYL`.
+
+The redundant `Send Error Notification` node that was in A6 (Cooking — Master) but was never wired to any error path has been removed.
+
+Covered workflows:
+
+| Workflow | n8n ID |
+|---|---|
+| A1 — Recipe Intake | `B2BrjjbqFhUgeHZV` |
+| A2 — Drehbuch Generator | `9QSE0w8qgSWdlzSK` |
+| A3 — Voice + Image Generator | `M6FzHQY3YG7zxjjC` |
+| A4 — Kling AI Animator | `yndJdfRoRIJbvTLC` |
+| A5 — Video Renderer | `YRKcfHEK5qcZ3wUO` |
+| A6 — Master | `ZbRaldRsY68GmpgJ` |
+
 ## Open Issues
 
 | Issue | Detail |
@@ -202,6 +225,7 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | **B3** | Parallelize two sequential `SplitInBatches` loops in Voice and Image Generator — split before, merge after by `clipIndex` |
 | **A1** | `SPOONACULAR_API_KEY_PLACEHOLDER` no longer needed — branch replaced with OpenAI AI generation. Resolved. |
 | **A5 Intro/Outro** | `intro_length` and `outro_length` set to 0 in `Intro/Outro Config` node — upload real cooking intro/outro video+audio assets to S3 and update URLs |
+| **Error Handling** | ✅ Resolved — Error Logger (`bCRPcgcAvzFMvf7j`) active; all 6 cooking workflows point to it via `settings.errorWorkflow`. |
 
 ## Session Log
 
@@ -215,3 +239,4 @@ When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, t
 | 2026-06-28 | A5 Cooking — Video Renderer deployed (ID: YRKcfHEK5qcZ3wUO) — 17-node workflow confirmed via GET. Fixed bucket from `reels-voiceovers` → `cooking-reels` and CDN URL to cooking-reels R2 endpoint. SRT uploaded to `cooking-reels`, final video delivered to S3 + Telegram (sendVideo) + Google Drive in parallel. |
 | 2026-06-28 | A1 Recipe Intake updated (ID: B2BrjjbqFhUgeHZV, versionCounter→2) — Replaced broken Spoonacular branch (3 nodes: Spoonacular Search + Get Details + Normalize) with OpenAI-based generation: `Generate Recipe with AI` (LangChain agent, gpt-4.1-mini, German ingredients/steps) + `OpenAI for Recipe` (lmChatOpenAi sub-node, credential v5ycd3YeDhUfrhQ2) + `Parse AI Recipe` (Code node). URL scrape branch unchanged. |
 | 2026-06-28 | A6 Cooking — Master deployed (ID: ZbRaldRsY68GmpgJ) — 14-node orchestrator: Webhook (POST /cooking-master) → Parse Input (JS, generates scriptId) → Telegram Confirm → A1→A2→A3→A4→A5 sequential chain → Extract Recipe Name → parallel Instagram + TikTok + YouTube Shorts captions + Pipeline Complete notification. Also fixed A4 Upload Video to S3 node (was empty params — added bucketName: cooking-reels, fileKey from videoKey expression). All sub-workflows activated. JSON saved to desktop. Webhook live at https://n8nconsutinginternational.app.n8n.cloud/webhook/cooking-master |
+| 2026-06-28 | Error Logger deployed (ID: bCRPcgcAvzFMvf7j) — 3-node workflow: errorTrigger → Code (format Berlin-time message, extract cooking_* scriptId) → Telegram send to -1003735970138. Activated. All 6 cooking workflows (A1–A6) updated with settings.errorWorkflow=bCRPcgcAvzFMvf7j. Redundant unconnected `Send Error Notification` node removed from A6. JSON saved to desktop. |

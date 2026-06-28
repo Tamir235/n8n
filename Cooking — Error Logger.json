@@ -1,0 +1,211 @@
+{
+    "updatedAt": "2026-06-28T16:08:00.538Z",
+    "createdAt": "2026-06-28T16:08:00.538Z",
+    "id": "bCRPcgcAvzFMvf7j",
+    "name": "Cooking \u2014 Error Logger",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+        {
+            "parameters": {},
+            "type": "n8n-nodes-base.errorTrigger",
+            "typeVersion": 1,
+            "position": [
+                240,
+                300
+            ],
+            "id": "error-trigger-001",
+            "name": "On Workflow Error"
+        },
+        {
+            "parameters": {
+                "jsCode": "const data = $input.first().json;\n\nconst workflowName = data.workflow?.name ?? 'Unknown Workflow';\nconst workflowId = data.workflow?.id ?? '';\nconst executionId = data.execution?.id ?? '';\nconst executionUrl = data.execution?.url ?? `https://n8nconsutinginternational.app.n8n.cloud/workflow/${workflowId}/executions`;\nconst errorMessage = data.error?.message ?? 'Unknown error';\nconst errorStack = data.error?.stack ?? '';\n\n// Try to extract scriptId from error message or stack\nconst scriptIdMatch = (errorMessage + errorStack).match(/cooking_[\\w\\-]+/);\nconst scriptId = scriptIdMatch ? scriptIdMatch[0] : 'N/A';\n\n// Timestamp Berlin\nconst now = new Date();\nconst berlinTime = new Intl.DateTimeFormat('de-DE', {\n  timeZone: 'Europe/Berlin',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit', second: '2-digit'\n}).format(now);\n\n// Short error (first 200 chars)\nconst shortError = errorMessage.length > 200 ? errorMessage.slice(0, 200) + '...' : errorMessage;\n\nconst message = `\u274c Pipeline Fehler\\n\\n\ud83d\udccb Workflow: ${workflowName}\\n\ud83d\udca5 Fehler: ${shortError}\\n\ud83c\udd94 Script ID: ${scriptId}\\n\ud83d\udd17 Execution: ${executionUrl}\\n\u23f0 ${berlinTime}`;\n\nreturn [{ json: { message, workflowName, scriptId, executionUrl, berlinTime } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ],
+            "id": "code-format-001",
+            "name": "Format Error"
+        },
+        {
+            "parameters": {
+                "chatId": "-1003735970138",
+                "text": "={{ $json.message }}",
+                "additionalFields": {
+                    "appendAttribution": false
+                }
+            },
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                680,
+                300
+            ],
+            "id": "telegram-send-001",
+            "name": "Send Error to Telegram",
+            "credentials": {
+                "telegramApi": {
+                    "id": "XSt2NLTZQtZZSEYL",
+                    "name": "Telegram account"
+                }
+            },
+            "webhookId": "a88ab855-adcc-4905-97ff-467341ad1434"
+        }
+    ],
+    "connections": {
+        "On Workflow Error": {
+            "main": [
+                [
+                    {
+                        "node": "Format Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Error": {
+            "main": [
+                [
+                    {
+                        "node": "Send Error to Telegram",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": null,
+    "versionId": "45718004-4476-4448-9854-2b431616ff11",
+    "activeVersionId": "45718004-4476-4448-9854-2b431616ff11",
+    "versionCounter": 1,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "shared": [
+        {
+            "updatedAt": "2026-06-28T16:08:00.540Z",
+            "createdAt": "2026-06-28T16:08:00.540Z",
+            "role": "workflow:owner",
+            "workflowId": "bCRPcgcAvzFMvf7j",
+            "projectId": "qK5OY1dAlcpuaDcJ",
+            "project": {
+                "updatedAt": "2025-08-24T15:22:22.446Z",
+                "createdAt": "2025-08-24T15:22:19.788Z",
+                "id": "qK5OY1dAlcpuaDcJ",
+                "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
+                "type": "personal",
+                "icon": null,
+                "description": null,
+                "customTelemetryTags": [],
+                "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+            }
+        }
+    ],
+    "tags": [],
+    "activeVersion": {
+        "updatedAt": "2026-06-28T16:08:00.541Z",
+        "createdAt": "2026-06-28T16:08:00.541Z",
+        "versionId": "45718004-4476-4448-9854-2b431616ff11",
+        "workflowId": "bCRPcgcAvzFMvf7j",
+        "nodes": [
+            {
+                "parameters": {},
+                "type": "n8n-nodes-base.errorTrigger",
+                "typeVersion": 1,
+                "position": [
+                    240,
+                    300
+                ],
+                "id": "error-trigger-001",
+                "name": "On Workflow Error"
+            },
+            {
+                "parameters": {
+                    "jsCode": "const data = $input.first().json;\n\nconst workflowName = data.workflow?.name ?? 'Unknown Workflow';\nconst workflowId = data.workflow?.id ?? '';\nconst executionId = data.execution?.id ?? '';\nconst executionUrl = data.execution?.url ?? `https://n8nconsutinginternational.app.n8n.cloud/workflow/${workflowId}/executions`;\nconst errorMessage = data.error?.message ?? 'Unknown error';\nconst errorStack = data.error?.stack ?? '';\n\n// Try to extract scriptId from error message or stack\nconst scriptIdMatch = (errorMessage + errorStack).match(/cooking_[\\w\\-]+/);\nconst scriptId = scriptIdMatch ? scriptIdMatch[0] : 'N/A';\n\n// Timestamp Berlin\nconst now = new Date();\nconst berlinTime = new Intl.DateTimeFormat('de-DE', {\n  timeZone: 'Europe/Berlin',\n  day: '2-digit', month: '2-digit', year: 'numeric',\n  hour: '2-digit', minute: '2-digit', second: '2-digit'\n}).format(now);\n\n// Short error (first 200 chars)\nconst shortError = errorMessage.length > 200 ? errorMessage.slice(0, 200) + '...' : errorMessage;\n\nconst message = `\u274c Pipeline Fehler\\n\\n\ud83d\udccb Workflow: ${workflowName}\\n\ud83d\udca5 Fehler: ${shortError}\\n\ud83c\udd94 Script ID: ${scriptId}\\n\ud83d\udd17 Execution: ${executionUrl}\\n\u23f0 ${berlinTime}`;\n\nreturn [{ json: { message, workflowName, scriptId, executionUrl, berlinTime } }];"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position": [
+                    460,
+                    300
+                ],
+                "id": "code-format-001",
+                "name": "Format Error"
+            },
+            {
+                "parameters": {
+                    "chatId": "-1003735970138",
+                    "text": "={{ $json.message }}",
+                    "additionalFields": {
+                        "appendAttribution": false
+                    }
+                },
+                "type": "n8n-nodes-base.telegram",
+                "typeVersion": 1.2,
+                "position": [
+                    680,
+                    300
+                ],
+                "id": "telegram-send-001",
+                "name": "Send Error to Telegram",
+                "credentials": {
+                    "telegramApi": {
+                        "id": "XSt2NLTZQtZZSEYL",
+                        "name": "Telegram account"
+                    }
+                },
+                "webhookId": "a88ab855-adcc-4905-97ff-467341ad1434"
+            }
+        ],
+        "connections": {
+            "On Workflow Error": {
+                "main": [
+                    [
+                        {
+                            "node": "Format Error",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Format Error": {
+                "main": [
+                    [
+                        {
+                            "node": "Send Error to Telegram",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "nodeGroups": [],
+        "authors": "Tamir Mubarak",
+        "name": null,
+        "description": null,
+        "autosaved": false,
+        "workflowPublishHistory": [
+            {
+                "createdAt": "2026-06-28T16:08:30.018Z",
+                "id": 160,
+                "workflowId": "bCRPcgcAvzFMvf7j",
+                "versionId": "45718004-4476-4448-9854-2b431616ff11",
+                "event": "activated",
+                "userId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+            }
+        ]
+    }
+}
