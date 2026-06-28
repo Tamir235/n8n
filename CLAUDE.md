@@ -55,6 +55,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | `Cooking — AI Food Studio Test.json` | `Qzd8tZyFb4rVPOyu` | Test/PoC — AI Director agent (GPT-4.1) converts recipe → cinematic production plan with Kling AI prompts |
 | `Cooking — Recipe Intake.json` | `B2BrjjbqFhUgeHZV` | **A1 ✅** — Dual-mode: Telegram URL scrape or Spoonacular API → normalized recipe + `scriptId` |
 | `Cooking — Drehbuch Generator.json` | `9QSE0w8qgSWdlzSK` | **A2 ✅** — AI screenplay generator: recipe → full cinematic production plan (AI Food Studio v1.0, 8–12 clips, 60–90s) |
+| `Cooking — Voice and Image Generator.json` | `M6FzHQY3YG7zxjjC` | **A3 ✅** — Parallel audio (ElevenLabs) + image (OpenAI gpt-image-1 high) loops for all clips; merges by clipIndex |
 
 ### The `scriptId` — correlation key across all sub-workflows
 
@@ -138,7 +139,8 @@ Each sub-workflow is called via `executeWorkflow` with `waitForSubWorkflow: true
 | Telegram Chat ID | `-1003735970138` |
 | ElevenLabs Voice ID | `TUKJhQmz3RPYBNAgC5A1` (German voice, set in `Voice ID` Set node) |
 | ElevenLabs model | `eleven_multilingual_v2`, stability `0.6`, similarity `0.8` |
-| OpenAI image model | `gpt-image-1`, size `1024x1536`, format `png`, quality `medium` |
+| OpenAI image model (crypto) | `gpt-image-1`, size `1024x1536`, format `png`, quality `medium` |
+| OpenAI image model (cooking) | `gpt-image-1`, size `1024x1536`, format `png`, quality `high` |
 | Shotstack output | `1080×1920 mp4` (vertical/Reels format) |
 | Clip count (crypto) | Always exactly 6 (padded with `outro` clips if fewer arrive) |
 | Clip count (cooking) | Dynamic — 8–12 clips targeting 60–90s total; no hard cap |
@@ -157,7 +159,7 @@ B3  ⏳ Parallelize audio + image SplitInBatches loops                   GitHub 
 ── Cooking Track ─────────────────────────────────────────────────
 A1  ✅ Recipe Intake (ID: B2BrjjbqFhUgeHZV)          GitHub #4
 A2  ✅ Drehbuch Generator  ID: 9QSE0w8qgSWdlzSK       GitHub #5
-A3  ⏳ Cooking Voice + Image Generator                GitHub #6  ← needs A2
+A3  ✅ Cooking Voice + Image Generator (ID: M6FzHQY3YG7zxjjC)  GitHub #6
 A4  ⏳ Kling AI Animator (image → 5-10s MP4)          GitHub #7  ← needs A3
 A5  ⏳ Cooking Video Renderer (Shotstack assembly)    GitHub #8  ← needs A4
 A6  ⏳ Cooking Master Orchestrator + Social Delivery  GitHub #9  ← needs A5
@@ -194,3 +196,4 @@ Assets at `reels/Intro/` and `reels/Outro/` in the CDN.
 |---|---|
 | 2026-06-28 | Initial build session: B1+B2 crypto bugs fixed; A1 Recipe Intake deployed; A2 Drehbuch Generator in progress; GitHub issues #1–#9 created; CLAUDE.md created and maintained |
 | 2026-06-28 | A2 Drehbuch Generator deployed (ID: 9QSE0w8qgSWdlzSK) — 5-node workflow: executeWorkflowTrigger → Code (recipe format) → Agent (AI Food Studio v1.0, gpt-4.1) → Code (parse & validate); JSON saved to desktop |
+| 2026-06-28 | A3 Cooking — Voice and Image Generator deployed (ID: M6FzHQY3YG7zxjjC) — 24-node workflow: parallel audio (ElevenLabs TTS + S3) and image (gpt-image-1 high quality + S3) loops, both starting from Prepare Clips, merged by clipIndex; JSON saved to desktop |
