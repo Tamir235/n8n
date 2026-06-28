@@ -1,434 +1,858 @@
 {
-    "updatedAt": "2026-06-28T15:53:41.089Z",
-    "createdAt": "2026-06-28T14:51:24.909Z",
-    "id": "B2BrjjbqFhUgeHZV",
-    "name": "Cooking — Recipe Intake",
-    "description": null,
-    "active": true,
-    "isArchived": false,
-    "nodes": [
-        {
-            "id": "node-trigger",
-            "name": "When Executed by Another Workflow",
-            "type": "n8n-nodes-base.executeWorkflowTrigger",
-            "typeVersion": 1.1,
-            "position": [
-                0,
-                300
-            ],
-            "parameters": {
-                "inputSource": "passthrough"
-            }
-        },
-        {
-            "id": "node-generate-scriptid",
-            "name": "Generate scriptId",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                300,
-                300
-            ],
-            "parameters": {
-                "jsCode": "const now = new Date();\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Europe/Berlin',\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n}).formatToParts(now);\nconst dp = Object.fromEntries(parts.map(p => [p.type, p.value]));\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\nconst scriptId = `cooking_${dp.year}-${dp.month}-${dp.day}T${dp.hour}-${dp.minute}-${dp.second}-${ms}Z`;\n\nconst input = $input.first().json;\nconst inputType = input.inputType ?? 'dish_name';\nconst inputValue = input.inputValue ?? 'Pasta Carbonara';\n\nreturn [{ json: { scriptId, inputType, inputValue } }];"
-            }
-        },
-        {
-            "id": "node-switch",
-            "name": "Route Input",
-            "type": "n8n-nodes-base.switch",
-            "typeVersion": 3,
-            "position": [
-                600,
-                300
-            ],
-            "parameters": {
-                "mode": "expression",
-                "output": "={{ $json.inputType }}",
-                "rules": {
-                    "values": [
-                        {
-                            "outputKey": "url",
-                            "conditions": {
-                                "options": {
-                                    "caseSensitive": true,
-                                    "leftValue": "",
-                                    "typeValidation": "strict"
-                                },
-                                "conditions": [
-                                    {
-                                        "id": "cond-url",
-                                        "leftValue": "={{ $json.inputType }}",
-                                        "rightValue": "url",
-                                        "operator": {
-                                            "type": "string",
-                                            "operation": "equals"
-                                        }
-                                    }
-                                ],
-                                "combinator": "and"
-                            },
-                            "renameOutput": false
-                        },
-                        {
-                            "outputKey": "dish_name",
-                            "conditions": {
-                                "options": {
-                                    "caseSensitive": true,
-                                    "leftValue": "",
-                                    "typeValidation": "strict"
-                                },
-                                "conditions": [
-                                    {
-                                        "id": "cond-dish",
-                                        "leftValue": "={{ $json.inputType }}",
-                                        "rightValue": "dish_name",
-                                        "operator": {
-                                            "type": "string",
-                                            "operation": "equals"
-                                        }
-                                    }
-                                ],
-                                "combinator": "and"
-                            },
-                            "renameOutput": false
-                        }
-                    ]
+  "updatedAt": "2026-06-28T16:48:28.522Z",
+  "createdAt": "2026-06-28T14:51:24.909Z",
+  "id": "B2BrjjbqFhUgeHZV",
+  "name": "Cooking \u2014 Recipe Intake",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "node-trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "node-generate-scriptid",
+      "name": "Generate scriptId",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Europe/Berlin',\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n}).formatToParts(now);\nconst dp = Object.fromEntries(parts.map(p => [p.type, p.value]));\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\nconst scriptId = `cooking_${dp.year}-${dp.month}-${dp.day}T${dp.hour}-${dp.minute}-${dp.second}-${ms}Z`;\n\nconst input = $input.first().json;\nconst inputType = input.inputType ?? 'dish_name';\nconst inputValue = input.inputValue ?? 'Pasta Carbonara';\n\nreturn [{ json: { scriptId, inputType, inputValue } }];"
+      }
+    },
+    {
+      "id": "node-switch",
+      "name": "Route Input",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        600,
+        300
+      ],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "url",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
                 },
-                "options": {
-                    "fallbackOutput": "extra"
-                }
-            }
-        },
-        {
-            "id": "node-scrape-url",
-            "name": "Scrape Recipe URL",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.2,
-            "position": [
-                900,
-                100
-            ],
-            "parameters": {
-                "method": "GET",
-                "url": "={{ $json.inputValue }}",
-                "options": {
-                    "response": {
-                        "response": {
-                            "responseFormat": "text"
-                        }
+                "conditions": [
+                  {
+                    "id": "cond-url",
+                    "leftValue": "={{ $json.inputType }}",
+                    "rightValue": "url",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
                     }
-                },
-                "onError": "continueRegularOutput"
-            }
-        },
-        {
-            "id": "node-openai-lm",
-            "name": "OpenAI Chat Model",
-            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-            "typeVersion": 1,
-            "position": [
-                1100,
-                0
-            ],
-            "parameters": {
-                "model": "gpt-4.1-mini",
-                "options": {}
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
             },
-            "credentials": {
-                "openAiApi": {
-                    "id": "v5ycd3YeDhUfrhQ2",
-                    "name": "OpenAi account"
-                }
-            }
-        },
-        {
-            "id": "node-parse-html",
-            "name": "Parse Recipe from HTML",
-            "type": "@n8n/n8n-nodes-langchain.agent",
-            "typeVersion": 1.7,
-            "position": [
-                1200,
-                100
-            ],
-            "parameters": {
-                "promptType": "define",
-                "text": "=Extract the recipe from this HTML page. Return ONLY valid JSON with this exact structure: {\"name\": \"...\", \"servings\": 2, \"prepTime\": \"10 min\", \"cookTime\": \"30 min\", \"ingredients\": [\"...\", \"...\"], \"steps\": [\"...\", \"...\"]}. HTML: {{ $json.data }}"
-            }
-        },
-        {
-            "id": "node-generate-recipe-ai",
-            "name": "Generate Recipe with AI",
-            "type": "@n8n/n8n-nodes-langchain.agent",
-            "typeVersion": 1.7,
-            "position": [
-                1200,
-                500
-            ],
-            "parameters": {
-                "promptType": "define",
-                "text": "=You are a professional chef and recipe writer. Generate a detailed, authentic recipe for the following dish.\n\nDish name: ={{ $('Route Input').item.json.inputValue }}\n\nReturn ONLY valid JSON in this exact format, no markdown, no explanation:\n{\n  \"name\": \"exact dish name\",\n  \"servings\": 2,\n  \"prepTime\": \"X min\",\n  \"cookTime\": \"X min\",\n  \"ingredients\": [\n    \"200g ingredient 1\",\n    \"2 tbsp ingredient 2\"\n  ],\n  \"steps\": [\n    \"Step 1 description\",\n    \"Step 2 description\"\n  ]\n}\n\nRequirements:\n- Ingredients in German with exact quantities\n- Steps in German, clear and detailed\n- 6-12 ingredients\n- 5-10 steps\n- Authentic recipe, not simplified"
-            }
-        },
-        {
-            "id": "node-openai-lm-recipe",
-            "name": "OpenAI for Recipe",
-            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-            "typeVersion": 1.3,
-            "position": [
-                1000,
-                650
-            ],
-            "parameters": {
-                "model": "gpt-4.1-mini",
-                "options": {}
-            },
-            "credentials": {
-                "openAiApi": {
-                    "id": "v5ycd3YeDhUfrhQ2",
-                    "name": "OpenAi account"
-                }
-            }
-        },
-        {
-            "id": "node-parse-ai-recipe",
-            "name": "Parse AI Recipe",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                1500,
-                500
-            ],
-            "parameters": {
-                "jsCode": "const raw = $input.first().json.output ?? '';\nlet recipe;\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  recipe = JSON.parse(match ? match[0] : raw);\n} catch(e) {\n  throw new Error(`Recipe parsing failed: ${e.message}. Raw: ${raw.slice(0,200)}`);\n}\nreturn [{ json: {\n  name: recipe.name ?? 'Unknown',\n  servings: recipe.servings ?? 2,\n  prepTime: recipe.prepTime ?? '15 min',\n  cookTime: recipe.cookTime ?? '30 min',\n  ingredients: recipe.ingredients ?? [],\n  steps: recipe.steps ?? []\n}}];"
-            }
-        },
-        {
-            "id": "node-merge",
-            "name": "Merge Recipe",
-            "type": "n8n-nodes-base.merge",
-            "typeVersion": 3,
-            "position": [
-                1800,
-                300
-            ],
-            "parameters": {
-                "mode": "passThrough",
-                "output": "first"
-            }
-        },
-        {
-            "id": "node-build-output",
-            "name": "Build Recipe Output",
-            "type": "n8n-nodes-base.set",
-            "typeVersion": 3.4,
-            "position": [
-                2100,
-                300
-            ],
-            "parameters": {
-                "mode": "manual",
-                "duplicateItem": false,
-                "assignments": {
-                    "assignments": [
-                        {
-                            "id": "assign-scriptid",
-                            "name": "scriptId",
-                            "value": "={{ $('Generate scriptId').item.json.scriptId }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "assign-recipe-name",
-                            "name": "recipe.name",
-                            "value": "={{ $json.name }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "assign-recipe-servings",
-                            "name": "recipe.servings",
-                            "value": "={{ $json.servings }}",
-                            "type": "number"
-                        },
-                        {
-                            "id": "assign-recipe-preptime",
-                            "name": "recipe.prepTime",
-                            "value": "={{ $json.prepTime }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "assign-recipe-cooktime",
-                            "name": "recipe.cookTime",
-                            "value": "={{ $json.cookTime }}",
-                            "type": "string"
-                        },
-                        {
-                            "id": "assign-recipe-ingredients",
-                            "name": "recipe.ingredients",
-                            "value": "={{ $json.ingredients }}",
-                            "type": "array"
-                        },
-                        {
-                            "id": "assign-recipe-steps",
-                            "name": "recipe.steps",
-                            "value": "={{ $json.steps }}",
-                            "type": "array"
-                        }
-                    ]
+            {
+              "outputKey": "dish_name",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose"
                 },
-                "options": {}
+                "conditions": [
+                  {
+                    "id": "cond-dish",
+                    "leftValue": "={{ $json.inputType }}",
+                    "rightValue": "dish_name",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
             }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 1
         }
+      }
+    },
+    {
+      "id": "node-scrape-url",
+      "name": "Scrape Recipe URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        100
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.inputValue }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    },
+    {
+      "id": "node-openai-lm",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "node-parse-html",
+      "name": "Parse Recipe from HTML",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1200,
+        100
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the recipe from this HTML page. Return ONLY valid JSON with this exact structure: {\"name\": \"...\", \"servings\": 2, \"prepTime\": \"10 min\", \"cookTime\": \"30 min\", \"ingredients\": [\"...\", \"...\"], \"steps\": [\"...\", \"...\"]}. HTML: {{ $json.data }}"
+      }
+    },
+    {
+      "id": "node-generate-recipe-ai",
+      "name": "Generate Recipe with AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1200,
+        500
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional chef and recipe writer. Generate a detailed, authentic recipe for the following dish.\n\nDish name: ={{ $('Route Input').item.json.inputValue }}\n\nReturn ONLY valid JSON in this exact format, no markdown, no explanation:\n{\n  \"name\": \"exact dish name\",\n  \"servings\": 2,\n  \"prepTime\": \"X min\",\n  \"cookTime\": \"X min\",\n  \"ingredients\": [\n    \"200g ingredient 1\",\n    \"2 tbsp ingredient 2\"\n  ],\n  \"steps\": [\n    \"Step 1 description\",\n    \"Step 2 description\"\n  ]\n}\n\nRequirements:\n- Ingredients in German with exact quantities\n- Steps in German, clear and detailed\n- 6-12 ingredients\n- 5-10 steps\n- Authentic recipe, not simplified"
+      }
+    },
+    {
+      "id": "node-openai-lm-recipe",
+      "name": "OpenAI for Recipe",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1000,
+        650
+      ],
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "v5ycd3YeDhUfrhQ2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "id": "node-parse-ai-recipe",
+      "name": "Parse AI Recipe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output ?? '';\nlet recipe;\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  recipe = JSON.parse(match ? match[0] : raw);\n} catch(e) {\n  throw new Error(`Recipe parsing failed: ${e.message}. Raw: ${raw.slice(0,200)}`);\n}\nreturn [{ json: {\n  name: recipe.name ?? 'Unknown',\n  servings: recipe.servings ?? 2,\n  prepTime: recipe.prepTime ?? '15 min',\n  cookTime: recipe.cookTime ?? '30 min',\n  ingredients: recipe.ingredients ?? [],\n  steps: recipe.steps ?? []\n}}];"
+      }
+    },
+    {
+      "id": "node-merge",
+      "name": "Merge Recipe",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1800,
+        300
+      ],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "first"
+      }
+    },
+    {
+      "id": "node-build-output",
+      "name": "Build Recipe Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2100,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-scriptid",
+              "name": "scriptId",
+              "value": "={{ $('Generate scriptId').item.json.scriptId }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-recipe-name",
+              "name": "recipe.name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-recipe-servings",
+              "name": "recipe.servings",
+              "value": "={{ $json.servings }}",
+              "type": "number"
+            },
+            {
+              "id": "assign-recipe-preptime",
+              "name": "recipe.prepTime",
+              "value": "={{ $json.prepTime }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-recipe-cooktime",
+              "name": "recipe.cookTime",
+              "value": "={{ $json.cookTime }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-recipe-ingredients",
+              "name": "recipe.ingredients",
+              "value": "={{ $json.ingredients }}",
+              "type": "array"
+            },
+            {
+              "id": "assign-recipe-steps",
+              "name": "recipe.steps",
+              "value": "={{ $json.steps }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Generate scriptId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate scriptId": {
+      "main": [
+        [
+          {
+            "node": "Route Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Input": {
+      "main": [
+        [
+          {
+            "node": "Scrape Recipe URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Recipe with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Recipe URL": {
+      "main": [
+        [
+          {
+            "node": "Parse Recipe from HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Parse Recipe from HTML",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Recipe from HTML": {
+      "main": [
+        [
+          {
+            "node": "Merge Recipe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI for Recipe": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Recipe with AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Recipe with AI": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Recipe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Recipe": {
+      "main": [
+        [
+          {
+            "node": "Merge Recipe",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Recipe": {
+      "main": [
+        [
+          {
+            "node": "Build Recipe Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "bCRPcgcAvzFMvf7j"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "65516797-7702-4cd0-ab31-6036d7efd2f7",
+  "activeVersionId": "65516797-7702-4cd0-ab31-6036d7efd2f7",
+  "versionCounter": 4,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-06-28T14:51:24.911Z",
+      "createdAt": "2026-06-28T14:51:24.911Z",
+      "role": "workflow:owner",
+      "workflowId": "B2BrjjbqFhUgeHZV",
+      "projectId": "qK5OY1dAlcpuaDcJ",
+      "project": {
+        "updatedAt": "2025-08-24T15:22:22.446Z",
+        "createdAt": "2025-08-24T15:22:19.788Z",
+        "id": "qK5OY1dAlcpuaDcJ",
+        "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-28T16:48:28.523Z",
+    "createdAt": "2026-06-28T16:48:28.523Z",
+    "versionId": "65516797-7702-4cd0-ab31-6036d7efd2f7",
+    "workflowId": "B2BrjjbqFhUgeHZV",
+    "nodes": [
+      {
+        "id": "node-trigger",
+        "name": "When Executed by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          300
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "node-generate-scriptid",
+        "name": "Generate scriptId",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const now = new Date();\nconst parts = new Intl.DateTimeFormat('en-CA', {\n  timeZone: 'Europe/Berlin',\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false\n}).formatToParts(now);\nconst dp = Object.fromEntries(parts.map(p => [p.type, p.value]));\nconst ms = String(now.getMilliseconds()).padStart(3, '0');\nconst scriptId = `cooking_${dp.year}-${dp.month}-${dp.day}T${dp.hour}-${dp.minute}-${dp.second}-${ms}Z`;\n\nconst input = $input.first().json;\nconst inputType = input.inputType ?? 'dish_name';\nconst inputValue = input.inputValue ?? 'Pasta Carbonara';\n\nreturn [{ json: { scriptId, inputType, inputValue } }];"
+        }
+      },
+      {
+        "id": "node-switch",
+        "name": "Route Input",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3,
+        "position": [
+          600,
+          300
+        ],
+        "parameters": {
+          "mode": "rules",
+          "rules": {
+            "values": [
+              {
+                "outputKey": "url",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "loose"
+                  },
+                  "conditions": [
+                    {
+                      "id": "cond-url",
+                      "leftValue": "={{ $json.inputType }}",
+                      "rightValue": "url",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": false
+              },
+              {
+                "outputKey": "dish_name",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "loose"
+                  },
+                  "conditions": [
+                    {
+                      "id": "cond-dish",
+                      "leftValue": "={{ $json.inputType }}",
+                      "rightValue": "dish_name",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": false
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": 1
+          }
+        }
+      },
+      {
+        "id": "node-scrape-url",
+        "name": "Scrape Recipe URL",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          900,
+          100
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $json.inputValue }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            }
+          },
+          "onError": "continueRegularOutput"
+        }
+      },
+      {
+        "id": "node-openai-lm",
+        "name": "OpenAI Chat Model",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1,
+        "position": [
+          1100,
+          0
+        ],
+        "parameters": {
+          "model": "gpt-4.1-mini",
+          "options": {}
+        },
+        "credentials": {
+          "openAiApi": {
+            "id": "v5ycd3YeDhUfrhQ2",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "id": "node-parse-html",
+        "name": "Parse Recipe from HTML",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          1200,
+          100
+        ],
+        "parameters": {
+          "promptType": "define",
+          "text": "=Extract the recipe from this HTML page. Return ONLY valid JSON with this exact structure: {\"name\": \"...\", \"servings\": 2, \"prepTime\": \"10 min\", \"cookTime\": \"30 min\", \"ingredients\": [\"...\", \"...\"], \"steps\": [\"...\", \"...\"]}. HTML: {{ $json.data }}"
+        }
+      },
+      {
+        "id": "node-generate-recipe-ai",
+        "name": "Generate Recipe with AI",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          1200,
+          500
+        ],
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are a professional chef and recipe writer. Generate a detailed, authentic recipe for the following dish.\n\nDish name: ={{ $('Route Input').item.json.inputValue }}\n\nReturn ONLY valid JSON in this exact format, no markdown, no explanation:\n{\n  \"name\": \"exact dish name\",\n  \"servings\": 2,\n  \"prepTime\": \"X min\",\n  \"cookTime\": \"X min\",\n  \"ingredients\": [\n    \"200g ingredient 1\",\n    \"2 tbsp ingredient 2\"\n  ],\n  \"steps\": [\n    \"Step 1 description\",\n    \"Step 2 description\"\n  ]\n}\n\nRequirements:\n- Ingredients in German with exact quantities\n- Steps in German, clear and detailed\n- 6-12 ingredients\n- 5-10 steps\n- Authentic recipe, not simplified"
+        }
+      },
+      {
+        "id": "node-openai-lm-recipe",
+        "name": "OpenAI for Recipe",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          1000,
+          650
+        ],
+        "parameters": {
+          "model": "gpt-4.1-mini",
+          "options": {}
+        },
+        "credentials": {
+          "openAiApi": {
+            "id": "v5ycd3YeDhUfrhQ2",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "id": "node-parse-ai-recipe",
+        "name": "Parse AI Recipe",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1500,
+          500
+        ],
+        "parameters": {
+          "jsCode": "const raw = $input.first().json.output ?? '';\nlet recipe;\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  recipe = JSON.parse(match ? match[0] : raw);\n} catch(e) {\n  throw new Error(`Recipe parsing failed: ${e.message}. Raw: ${raw.slice(0,200)}`);\n}\nreturn [{ json: {\n  name: recipe.name ?? 'Unknown',\n  servings: recipe.servings ?? 2,\n  prepTime: recipe.prepTime ?? '15 min',\n  cookTime: recipe.cookTime ?? '30 min',\n  ingredients: recipe.ingredients ?? [],\n  steps: recipe.steps ?? []\n}}];"
+        }
+      },
+      {
+        "id": "node-merge",
+        "name": "Merge Recipe",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          1800,
+          300
+        ],
+        "parameters": {
+          "mode": "passThrough",
+          "output": "first"
+        }
+      },
+      {
+        "id": "node-build-output",
+        "name": "Build Recipe Output",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2100,
+          300
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "assign-scriptid",
+                "name": "scriptId",
+                "value": "={{ $('Generate scriptId').item.json.scriptId }}",
+                "type": "string"
+              },
+              {
+                "id": "assign-recipe-name",
+                "name": "recipe.name",
+                "value": "={{ $json.name }}",
+                "type": "string"
+              },
+              {
+                "id": "assign-recipe-servings",
+                "name": "recipe.servings",
+                "value": "={{ $json.servings }}",
+                "type": "number"
+              },
+              {
+                "id": "assign-recipe-preptime",
+                "name": "recipe.prepTime",
+                "value": "={{ $json.prepTime }}",
+                "type": "string"
+              },
+              {
+                "id": "assign-recipe-cooktime",
+                "name": "recipe.cookTime",
+                "value": "={{ $json.cookTime }}",
+                "type": "string"
+              },
+              {
+                "id": "assign-recipe-ingredients",
+                "name": "recipe.ingredients",
+                "value": "={{ $json.ingredients }}",
+                "type": "array"
+              },
+              {
+                "id": "assign-recipe-steps",
+                "name": "recipe.steps",
+                "value": "={{ $json.steps }}",
+                "type": "array"
+              }
+            ]
+          },
+          "options": {}
+        }
+      }
     ],
     "connections": {
-        "When Executed by Another Workflow": {
-            "main": [
-                [
-                    {
-                        "node": "Generate scriptId",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Generate scriptId": {
-            "main": [
-                [
-                    {
-                        "node": "Route Input",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Route Input": {
-            "main": [
-                [
-                    {
-                        "node": "Scrape Recipe URL",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Generate Recipe with AI",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Scrape Recipe URL": {
-            "main": [
-                [
-                    {
-                        "node": "Parse Recipe from HTML",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "OpenAI Chat Model": {
-            "ai_languageModel": [
-                [
-                    {
-                        "node": "Parse Recipe from HTML",
-                        "type": "ai_languageModel",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Parse Recipe from HTML": {
-            "main": [
-                [
-                    {
-                        "node": "Merge Recipe",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "OpenAI for Recipe": {
-            "ai_languageModel": [
-                [
-                    {
-                        "node": "Generate Recipe with AI",
-                        "type": "ai_languageModel",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Generate Recipe with AI": {
-            "main": [
-                [
-                    {
-                        "node": "Parse AI Recipe",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Parse AI Recipe": {
-            "main": [
-                [
-                    {
-                        "node": "Merge Recipe",
-                        "type": "main",
-                        "index": 1
-                    }
-                ]
-            ]
-        },
-        "Merge Recipe": {
-            "main": [
-                [
-                    {
-                        "node": "Build Recipe Output",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
-    },
-    "settings": {
-        "executionOrder": "v1"
-    },
-    "staticData": null,
-    "meta": null,
-    "nodeGroups": [],
-    "pinData": null,
-    "versionId": "28464c25-f644-4aab-b3e4-56caaa9f4a96",
-    "activeVersionId": "28464c25-f644-4aab-b3e4-56caaa9f4a96",
-    "versionCounter": 2,
-    "triggerCount": 0,
-    "sourceWorkflowId": null,
-    "shared": [
-        {
-            "updatedAt": "2026-06-28T14:51:24.911Z",
-            "createdAt": "2026-06-28T14:51:24.911Z",
-            "role": "workflow:owner",
-            "workflowId": "B2BrjjbqFhUgeHZV",
-            "projectId": "qK5OY1dAlcpuaDcJ",
-            "project": {
-                "updatedAt": "2025-08-24T15:22:22.446Z",
-                "createdAt": "2025-08-24T15:22:19.788Z",
-                "id": "qK5OY1dAlcpuaDcJ",
-                "name": "Tamir Mubarak <tamir.mubarak@yahoo.de>",
-                "type": "personal",
-                "icon": null,
-                "description": null,
-                "customTelemetryTags": [],
-                "creatorId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Generate scriptId",
+              "type": "main",
+              "index": 0
             }
-        }
-    ],
-    "tags": []
+          ]
+        ]
+      },
+      "Generate scriptId": {
+        "main": [
+          [
+            {
+              "node": "Route Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route Input": {
+        "main": [
+          [
+            {
+              "node": "Scrape Recipe URL",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Generate Recipe with AI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Scrape Recipe URL": {
+        "main": [
+          [
+            {
+              "node": "Parse Recipe from HTML",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Parse Recipe from HTML",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Recipe from HTML": {
+        "main": [
+          [
+            {
+              "node": "Merge Recipe",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI for Recipe": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Generate Recipe with AI",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate Recipe with AI": {
+        "main": [
+          [
+            {
+              "node": "Parse AI Recipe",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse AI Recipe": {
+        "main": [
+          [
+            {
+              "node": "Merge Recipe",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Merge Recipe": {
+        "main": [
+          [
+            {
+              "node": "Build Recipe Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Tamir Mubarak",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-28T16:48:28.734Z",
+        "id": 185,
+        "workflowId": "B2BrjjbqFhUgeHZV",
+        "versionId": "65516797-7702-4cd0-ab31-6036d7efd2f7",
+        "event": "activated",
+        "userId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+      },
+      {
+        "createdAt": "2026-06-28T16:48:28.653Z",
+        "id": 184,
+        "workflowId": "B2BrjjbqFhUgeHZV",
+        "versionId": "65516797-7702-4cd0-ab31-6036d7efd2f7",
+        "event": "deactivated",
+        "userId": "cb94183f-eb2d-4fa9-b635-cd943ba64ddc"
+      }
+    ]
+  }
 }
