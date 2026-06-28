@@ -56,7 +56,7 @@ Via UI: open workflow → ⋮ menu → **Import from file**. Deactivate before i
 | `Cooking — Recipe Intake.json` | `B2BrjjbqFhUgeHZV` | **A1 ✅** — Dual-mode: Telegram URL scrape or Spoonacular API → normalized recipe + `scriptId` |
 | `Cooking — Drehbuch Generator.json` | `9QSE0w8qgSWdlzSK` | **A2 ✅** — AI screenplay generator: recipe → full cinematic production plan (AI Food Studio v1.0, 8–12 clips, 60–90s) |
 | `Cooking — Voice and Image Generator.json` | `M6FzHQY3YG7zxjjC` | **A3 ✅** — Parallel audio (ElevenLabs) + image (OpenAI gpt-image-1 high) loops for all clips; merges by clipIndex |
-| `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. `KLING_API_KEY_PLACEHOLDER` must be replaced before use. |
+| `Cooking — Kling AI Animator.json` | `yndJdfRoRIJbvTLC` | **A4 ✅** — Animates each clip image into a 5–10s MP4 via Kling AI image2video; polls until done, uploads to S3, outputs `video_url` per clip. Real API key active. |
 
 ### The `scriptId` — correlation key across all sub-workflows
 
@@ -69,10 +69,11 @@ reels/{scriptId}/audio/clip_NN_{type}__{hash}.mp3     ← crypto
 reels/{scriptId}/image/clip_NN_{type}__{hash}.png     ← crypto
 reels/{scriptId}/srt/full_transcript_{ts}.srt         ← crypto
 
-cooking/{scriptId}/audio/clip_NN_{type}.mp3           ← cooking
-cooking/{scriptId}/image/clip_NN_{type}.png           ← cooking
-cooking/{scriptId}/video/clip_NN_{type}.mp4           ← cooking (Kling AI output)
-cooking/{scriptId}/srt/full_transcript_{ts}.srt       ← cooking
+cooking/{scriptId}/audio/clip_NN_{type}.mp3              ← cooking (ElevenLabs)
+cooking/{scriptId}/image/clip_NN_{type}.png              ← cooking (OpenAI gpt-image-1)
+cooking/{scriptId}/video/clip_NN_{type}.mp4              ← cooking (Kling AI animated)
+cooking/{scriptId}/srt/full_transcript_{ts}.srt          ← cooking
+cooking/{scriptId}/final/{recipe_name}_{date}.mp4        ← cooking (Shotstack final render)
 ```
 
 The crypto hash (SHA-256, 12 chars) in filenames is derived from content — enables idempotent re-runs.
@@ -161,8 +162,8 @@ B3  ⏳ Parallelize audio + image SplitInBatches loops                   GitHub 
 A1  ✅ Recipe Intake (ID: B2BrjjbqFhUgeHZV)          GitHub #4
 A2  ✅ Drehbuch Generator  ID: 9QSE0w8qgSWdlzSK       GitHub #5
 A3  ✅ Cooking Voice + Image Generator (ID: M6FzHQY3YG7zxjjC)  GitHub #6
-A4  ✅ Kling AI Animator (ID: yndJdfRoRIJbvTLC)        GitHub #7  ← needs A3
-A5  ⏳ Cooking Video Renderer (Shotstack assembly)    GitHub #8  ← needs A4
+A4  ✅ Kling AI Animator (ID: yndJdfRoRIJbvTLC)        GitHub #7
+A5  🔄 Cooking Video Renderer (Shotstack assembly)    GitHub #8  ← building now
 A6  ⏳ Cooking Master Orchestrator + Social Delivery  GitHub #9  ← needs A5
 ```
 
@@ -184,13 +185,19 @@ intro_length: 7.5s  |  outro_length: 8.5s  |  captions_enabled: true
 ```
 Assets at `reels/Intro/` and `reels/Outro/` in the CDN.
 
+### Intro/Outro (cooking, configurable in `Intro/Outro Config` Set node in A5)
+```
+intro_length: 0s  |  outro_length: 0s  (placeholders — set to 0 until real assets available)
+```
+When assets are ready: upload to `cooking/Intro/` and `cooking/Outro/` in CDN, then update the Set node with URLs and lengths. Shotstack uses `type: "video"` with `volume: 0` for video track + separate audio track (same pattern as main clips).
+
 ## Open Issues
 
 | Issue | Detail |
 |---|---|
 | **B3** | Parallelize two sequential `SplitInBatches` loops in Voice and Image Generator — split before, merge after by `clipIndex` |
 | **A1** | `SPOONACULAR_API_KEY_PLACEHOLDER` in Recipe Intake — replace with real credential before production |
-| **A4** | `KLING_API_KEY_PLACEHOLDER` in Kling AI Animator (nodes: "Kling — Create Task" and "Kling — Poll Status") — replace with real Kling API key before production |
+| **A5 Intro/Outro** | `intro_length` and `outro_length` set to 0 in `Intro/Outro Config` node — upload real cooking intro/outro video+audio assets to S3 and update URLs |
 
 ## Session Log
 
@@ -199,4 +206,5 @@ Assets at `reels/Intro/` and `reels/Outro/` in the CDN.
 | 2026-06-28 | Initial build session: B1+B2 crypto bugs fixed; A1 Recipe Intake deployed; A2 Drehbuch Generator in progress; GitHub issues #1–#9 created; CLAUDE.md created and maintained |
 | 2026-06-28 | A2 Drehbuch Generator deployed (ID: 9QSE0w8qgSWdlzSK) — 5-node workflow: executeWorkflowTrigger → Code (recipe format) → Agent (AI Food Studio v1.0, gpt-4.1) → Code (parse & validate); JSON saved to desktop |
 | 2026-06-28 | A3 Cooking — Voice and Image Generator deployed (ID: M6FzHQY3YG7zxjjC) — 24-node workflow: parallel audio (ElevenLabs TTS + S3) and image (gpt-image-1 high quality + S3) loops, both starting from Prepare Clips, merged by clipIndex; JSON saved to desktop |
-| 2026-06-28 | A4 Cooking — Kling AI Animator deployed (ID: yndJdfRoRIJbvTLC) — 14-node workflow: Loop Clips → Prepare Kling Input → Kling Create Task → Save Task ID → Wait 45s → Poll Status → Extract Status → Done? → (true) Download Video → Upload to S3 → Build Video Output → loop back; (false) Wait 15s → Poll again; outputs `video_url` per clip sorted by clipIndex. KLING_API_KEY_PLACEHOLDER must be replaced before use. JSON saved to desktop |
+| 2026-06-28 | A4 Cooking — Kling AI Animator deployed (ID: yndJdfRoRIJbvTLC) — 14-node workflow; real Kling API key inserted via n8n API (both HTTP nodes updated). JSON saved to desktop |
+| 2026-06-28 | A5 Cooking — Video Renderer building now — 17-node workflow: SRT generation → Shotstack (video+audio tracks) → poll → download → parallel delivery: Telegram + Google Drive + S3/R2 bucket (cooking/{scriptId}/final/). Intro/Outro as configurable Set node, currently 0s placeholders |
