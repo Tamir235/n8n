@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/tamir/Desktop/cyborg-kpi && TIMESTAMP=$(date '+%Y-%m-%d %H:%M') && git add index.html CLAUDE.md DESIGN.md SKILLS.md .claude/ 2>/dev/null; if ! git diff --cached --quiet; then git commit -m \"chore: auto-save [$TIMESTAMP] – vor Kontext-Reset\" 2>/dev/null; fi; echo \"[$TIMESTAMP] PreCompact: auto-save\" >> /Users/tamir/Desktop/cyborg-kpi/.claude/session-log.txt 2>/dev/null; true",
+            "statusMessage": "Speichere Session vor Kontext-Reset...",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
